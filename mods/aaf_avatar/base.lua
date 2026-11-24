@@ -6,7 +6,7 @@ local SPEED = 4
 local CROUCH_SPEED = 2
 local GRAVITY = 20
 -- The camera sits this far from the focus point, back along the look direction
-local CAM_DISTANCE = 10
+local CAM_DISTANCE = 7
 -- Focus point height above the avatar's origin
 local FOCUS_HEIGHT = 0.5
 -- How fast the rig closes the gap to its target (per second)

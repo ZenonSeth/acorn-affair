@@ -457,6 +457,36 @@ return {
 		},
 		tiles = {"aaf_props_plant_palm_top_top.png", "aaf_props_plant_palm_top_bottom.png", "aaf_props_plant_palm_top_left.png", "aaf_props_plant_palm_top_right.png", "aaf_props_plant_palm_top_back.png", "aaf_props_plant_palm_top_front.png"},
 	},
+	lamp_post_bottom = {
+		boxes = {
+			{-6/32, -16/32, -6/32, 6/32, -10/32, 6/32},
+			{-4/32, -10/32, -4/32, 4/32, -5/32, 4/32},
+			{-2/32, -5/32, -2/32, 2/32, 16/32, 2/32},
+		},
+		tiles = {"aaf_props_lamp_post_bottom_top.png", "aaf_props_lamp_post_bottom_bottom.png", "aaf_props_lamp_post_bottom_left.png", "aaf_props_lamp_post_bottom_right.png", "aaf_props_lamp_post_bottom_back.png", "aaf_props_lamp_post_bottom_front.png"},
+	},
+	lamp_post_mid = {
+		boxes = {
+			{-2/32, -16/32, -2/32, 2/32, 16/32, 2/32},
+		},
+		tiles = {"aaf_props_lamp_post_mid_top.png", "aaf_props_lamp_post_mid_bottom.png", "aaf_props_lamp_post_mid_left.png", "aaf_props_lamp_post_mid_right.png", "aaf_props_lamp_post_mid_back.png", "aaf_props_lamp_post_mid_front.png"},
+	},
+	lamp_post_top = {
+		boxes = {
+			{-1/32, 13/32, -1/32, 1/32, 16/32, 1/32},
+			{-6/32, 10/32, -6/32, 6/32, 13/32, 6/32},
+			{-5/32, 1/32, -5/32, 5/32, 10/32, 5/32},
+			{-4/32, -1/32, -4/32, 4/32, 1/32, 4/32},
+			{-2/32, -16/32, -2/32, 2/32, -1/32, 2/32},
+		},
+		tiles = {"aaf_props_lamp_post_top_top.png", "aaf_props_lamp_post_top_bottom.png", "aaf_props_lamp_post_top_left.png", "aaf_props_lamp_post_top_right.png", "aaf_props_lamp_post_top_back.png", "aaf_props_lamp_post_top_front.png"},
+	},
+	tree_trunk = {
+		boxes = {
+			{-6/32, -16/32, -6/32, 6/32, 16/32, 6/32},
+		},
+		tiles = {"aaf_props_tree_trunk_top.png", "aaf_props_tree_trunk_bottom.png", "aaf_props_tree_trunk_left.png", "aaf_props_tree_trunk_right.png", "aaf_props_tree_trunk_back.png", "aaf_props_tree_trunk_front.png"},
+	},
 	sofa_l = {
 		boxes = {
 			{-16/32, 3/32, -13/32, -8/32, 7/32, 14/32},

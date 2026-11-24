@@ -62,6 +62,99 @@ one_way_wall("aaf_world:wallpaper", "Wall (striped wallpaper)", world_tile("aaf_
 -- Per node, so the chair rail stays at the top of the bottom row
 one_way_wall("aaf_world:wall_panel", "Wall (wood panelling, bottom row)", {name = "aaf_world_wall_panel.png"})
 
+-- Fills spaces that are never meant to be seen (rooms behind deco doors); black under any light
+core.register_node("aaf_world:void", {
+	description = "Void (pure black)",
+	tiles = {fill("#000000")},
+	is_ground_content = false,
+	groups = {cracky = 1},
+})
+
+-- Outside: the brick ground floor under each building, street and trees
+local BRICK = world_tile("aaf_world_brick.png")
+local COPING = "aaf_world_coping.png"
+local GROUND_SIDE = fill("#1c1c1e")
+
+core.register_node("aaf_world:brick", {
+	description = "Brick (ground floor outside)",
+	tiles = {COPING, BRICK, BRICK},
+	is_ground_content = false,
+	groups = {cracky = 1},
+})
+
+-- Brick with a painted front (-Z at param2 0) facing the street
+local function brick_front(name, description, front, light)
+	core.register_node(name, {
+		description = description,
+		paramtype2 = "4dir",
+		tiles = {COPING, BRICK, BRICK, BRICK, BRICK, front},
+		light_source = light,
+		is_ground_content = false,
+		groups = {cracky = 1},
+	})
+end
+
+brick_front("aaf_world:brick_window", "Brick with a dark street window", "aaf_world_street_window.png")
+brick_front("aaf_world:brick_window_lit", "Brick with a lit street window", "aaf_world_street_window_lit.png", 4)
+-- Double door, 2x2; seen from the street, l is on the left
+for _, part in ipairs({"bl", "br", "tl", "tr"}) do
+	brick_front("aaf_world:street_door_" .. part, "Street double door (" .. part .. ")",
+		"aaf_world_street_door_" .. part .. ".png")
+end
+
+-- Facade shell: brick only on the street side(s), black elsewhere (roof included)
+local BLACK = fill("#000000")
+
+core.register_node("aaf_world:facade", {
+	description = "Brick facade (brick front, black elsewhere)",
+	paramtype2 = "4dir",
+	tiles = {BLACK, BLACK, BLACK, BLACK, BLACK, BRICK},
+	is_ground_content = false,
+	groups = {cracky = 1},
+})
+
+-- Outer corner: brick on the front (-Z at param2 0) and the left (-X at param2 0)
+core.register_node("aaf_world:facade_corner", {
+	description = "Brick facade, outer corner (brick front and left)",
+	paramtype2 = "4dir",
+	tiles = {BLACK, BLACK, BLACK, BRICK, BLACK, BRICK},
+	is_ground_content = false,
+	groups = {cracky = 1},
+})
+
+core.register_node("aaf_world:sidewalk", {
+	description = "Sidewalk",
+	tiles = {world_tile("aaf_world_sidewalk.png"), GROUND_SIDE, GROUND_SIDE},
+	is_ground_content = false,
+	groups = {cracky = 1},
+})
+
+core.register_node("aaf_world:road", {
+	description = "Road",
+	tiles = {world_tile("aaf_world_road.png"), GROUND_SIDE, GROUND_SIDE},
+	is_ground_content = false,
+	groups = {cracky = 1},
+})
+
+core.register_node("aaf_world:tree_pit", {
+	description = "Sidewalk tree pit (trunk goes on top)",
+	tiles = {"aaf_world_tree_pit.png", GROUND_SIDE, GROUND_SIDE},
+	is_ground_content = false,
+	groups = {cracky = 1},
+})
+
+core.register_node("aaf_world:leaves", {
+	description = "Leaves",
+	drawtype = "allfaces_optional",
+	tiles = {"aaf_world_leaves.png"},
+	use_texture_alpha = "clip",
+	paramtype = "light",
+	sunlight_propagates = true,
+	walkable = false,
+	is_ground_content = false,
+	groups = {cracky = 1},
+})
+
 -- Worlds made without the main menu (e.g. a dedicated server) do not get the game's default_mapgen
 core.set_mapgen_setting("mg_name", "singlenode", true)
 

@@ -13,6 +13,8 @@ local WASTEBASKET_BOX = {type = "fixed", fixed = {-8/32, -0.5, -8/32, 8/32, 0, 8
 local SMALL_POT_BOX = {type = "fixed", fixed = {-7/32, -0.5, -7/32, 7/32, -4/32, 7/32}}
 local BIG_POT_BOX = {type = "fixed", fixed = {-9/32, -0.5, -9/32, 9/32, 2/32, 9/32}}
 local BASKET_BOX = {type = "fixed", fixed = {-8/32, -0.5, -8/32, 8/32, 0, 8/32}}
+local LAMP_POLE = {type = "fixed", fixed = {-3/32, -0.5, -3/32, 3/32, 0.5, 3/32}}
+local TRUNK_BOX = {type = "fixed", fixed = {-6/32, -0.5, -6/32, 6/32, 0.5, 6/32}}
 local BLANK = "blank.png"
 
 -- node -> {description, part (generated shape, default the node name), walkable (default true),
@@ -82,6 +84,10 @@ local PART_DEFS = {
 	sofa_r_teal = {"Sofa, teal, right half"},
 	sofa_l_plum = {"Sofa, plum, left half"},
 	sofa_r_plum = {"Sofa, plum, right half"},
+	lamp_post_bottom = {"Street lamp, bottom", collision = LAMP_POLE},
+	lamp_post_mid = {"Street lamp, post", collision = LAMP_POLE},
+	lamp_post_top = {"Street lamp, lantern", collision = LAMP_POLE, light = 12},
+	tree_trunk = {"Tree trunk", collision = TRUNK_BOX},
 }
 
 -- Placer item -> {description, {part, right, up, forward}...}; forward -1 is the cell in front of the set
@@ -108,6 +114,8 @@ local SETS = {
 	sofa = {"Sofa, brown leather", {"sofa_l", 0, 0, 0}, {"sofa_r", 1, 0, 0}},
 	sofa_teal = {"Sofa, teal", {"sofa_l_teal", 0, 0, 0}, {"sofa_r_teal", 1, 0, 0}},
 	sofa_plum = {"Sofa, plum", {"sofa_l_plum", 0, 0, 0}, {"sofa_r_plum", 1, 0, 0}},
+	lamp_post = {"Street lamp",
+		{"lamp_post_bottom", 0, 0, 0}, {"lamp_post_mid", 0, 1, 0}, {"lamp_post_top", 0, 2, 0}},
 }
 
 for name, def in pairs(PART_DEFS) do
