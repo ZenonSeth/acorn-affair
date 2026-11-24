@@ -1,0 +1,24 @@
+# Licenses
+
+- Code (Lua and any other source): LGPL-3.0-only
+- Media (textures, models, sounds, etc.): CC BY-SA 3.0, except the third-party fonts below
+
+Third-party assets, with their licenses and authors, are listed below.
+
+## Credits
+
+### Fonts
+
+Both fonts are licensed under the SIL Open Font License 1.1; the full license text ships next to them.
+The files are renamed (Luanti picks game fonts by file name) but otherwise unmodified. Styles a font
+does not have are filled with copies of its own regular or bold file.
+
+- **Federo** by Cyreal (Olexa M. Volochay). Copyright (c) 2011, Cyreal (www.cyreal.org), with Reserved
+  Font Name "Federo". Source: https://fonts.google.com/specimen/Federo
+  - Files: `mods/aaf_fonts/fonts/regular.ttf`, `bold.ttf`, `italic.ttf`, `bold_italic.ttf`
+  - License: `mods/aaf_fonts/LICENSE-Federo.txt`
+- **Inika** by Constanza Artigas Preller. Copyright (c) 2011, Constanza Artigas Preller, with Reserved
+  Font Name "Inika". Source: https://fonts.google.com/specimen/Inika
+  - Files: `mods/aaf_fonts/fonts/mono.ttf`, `mono_italic.ttf` (Regular), `mono_bold.ttf`,
+    `mono_bold_italic.ttf` (Bold)
+  - License: `mods/aaf_fonts/LICENSE-Inika.txt`

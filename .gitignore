@@ -1,0 +1,11 @@
+/*.md
+!/LICENSE.md
+!/README.md
+!/JAM2026.md
+*.kra
+*.afphoto
+*~
+*~lock~*
+/tools/
+/excluded/
+/m/
