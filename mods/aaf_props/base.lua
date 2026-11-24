@@ -68,6 +68,10 @@ local PART_DEFS = {
 	plant_palm_top = {"Palm in a basket, top", walkable = false},
 	door_bottom = {"Door, bottom", flat = "clip"},
 	door_top = {"Door, top", flat = "clip"},
+	-- Same look as the door; the office story decides what it does
+	office_door_bottom = {"Office door, bottom", part = "door_bottom", flat = "clip",
+		interact = "aaf_office_story:door"},
+	office_door_top = {"Office door, top", part = "door_top", flat = "clip"},
 	door_open_bottom = {"Open doorway, bottom", flat = "clip", walkable = false},
 	door_open_top = {"Open doorway, top", flat = "clip", walkable = false},
 	window_bottom = {"Window, bottom", flat = "blend"},
@@ -108,6 +112,7 @@ local SETS = {
 	plant_rubber = {"Rubber plant", {"plant_rubber_bottom", 0, 0, 0}, {"plant_rubber_top", 0, 1, 0}},
 	plant_palm = {"Palm in a basket", {"plant_palm_bottom", 0, 0, 0}, {"plant_palm_top", 0, 1, 0}},
 	door = {"Door", {"door_bottom", 0, 0, 0}, {"door_top", 0, 1, 0}},
+	office_door = {"Office door", {"office_door_bottom", 0, 0, 0}, {"office_door_top", 0, 1, 0}},
 	door_open = {"Open doorway", {"door_open_bottom", 0, 0, 0}, {"door_open_top", 0, 1, 0}},
 	window = {"Window", {"window_bottom", 0, 0, 0}, {"window_top", 0, 1, 0}},
 	window_blinds = {"Window with blinds", {"window_blinds_bottom", 0, 0, 0}, {"window_blinds_top", 0, 1, 0}},
@@ -132,6 +137,7 @@ for name, def in pairs(PART_DEFS) do
 		walkable = walkable,
 		light_source = def.light,
 		drop = def.drop,
+		_aaf_interact = def.interact,
 	}
 	if def.flat then
 		node.node_box = {type = "regular"}
@@ -278,7 +284,8 @@ function aaf_props.place(set_name, pos, param2)
 end
 
 for set_name, set in pairs(SETS) do
-	local tiles = parts[set[2][1]].tiles
+	local first = set[2][1]
+	local tiles = parts[PART_DEFS[first] and PART_DEFS[first].part or first].tiles
 	core.register_craftitem("aaf_props:" .. set_name, {
 		description = set[1],
 		inventory_image = tiles[6] or tiles[1],
