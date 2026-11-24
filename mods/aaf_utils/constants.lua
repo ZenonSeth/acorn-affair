@@ -13,6 +13,12 @@ constants.sites = {
 	},
 }
 
+-- Open street where rain falls, as x/z rectangles (the building block stays dry)
+constants.rain_areas = {
+	{minp = {x = -14, z = -10}, maxp = {x = 18, z = -2}},
+	{minp = {x = 10, z = -1}, maxp = {x = 18, z = 19}},
+}
+
 constants.spawn_pos = {x = 4, y = constants.floor_y + 1.5, z = 3}
 
 -- Multiplies every HUD text size; the game font (Federo) reads slightly small at the engine default

@@ -86,7 +86,7 @@ local PART_DEFS = {
 	sofa_r_plum = {"Sofa, plum, right half"},
 	lamp_post_bottom = {"Street lamp, bottom", collision = LAMP_POLE},
 	lamp_post_mid = {"Street lamp, post", collision = LAMP_POLE},
-	lamp_post_top = {"Street lamp, lantern", collision = LAMP_POLE, light = 12},
+	lamp_post_top = {"Street lamp, lantern", collision = LAMP_POLE, light = 10},
 	tree_trunk = {"Tree trunk", collision = TRUNK_BOX},
 }
 

@@ -37,7 +37,58 @@ function aaf_environment.apply(player)
 	player:set_stars({visible = true, count = 600})
 end
 
+local constants = aaf_utils.constants
+
+-- A thin streak, brighter at the bottom, on a 32 px square so the particle stays narrow
+local DROP_TEXTURE = "[fill:32x32:#00000000^[fill:1x14:15,0:#8c9cb060^[fill:1x18:15,14:#aabacec0"
+local SPLASH_TEXTURE = "[fill:2x2:#aabace70"
+local DROP_SIZE = 0.9
+local DROP_SPEED = 12
+-- Drops (and splashes) per second for each node of open street
+local RAIN_DENSITY = 1
+local RAIN_GLOW = 3
+local RAIN_TOP = constants.floor_y + 7
+local GROUND_Y = constants.street_y + 0.5
+
+local function add_rain(player)
+	local name = player:get_player_name()
+	local fall_time = (RAIN_TOP + 1 - GROUND_Y) / DROP_SPEED + 0.2
+	for _, area in ipairs(constants.rain_areas) do
+		local cells = (area.maxp.x - area.minp.x + 1) * (area.maxp.z - area.minp.z + 1)
+		local amount = math.ceil(cells * RAIN_DENSITY)
+		local x0, x1 = area.minp.x - 0.5, area.maxp.x + 0.5
+		local z0, z1 = area.minp.z - 0.5, area.maxp.z + 0.5
+		core.add_particlespawner({
+			playername = name,
+			amount = amount,
+			time = 0,
+			pos = {min = vector.new(x0, RAIN_TOP, z0), max = vector.new(x1, RAIN_TOP + 1, z1)},
+			vel = vector.new(0, -DROP_SPEED, 0),
+			exptime = fall_time,
+			size = DROP_SIZE,
+			collisiondetection = true,
+			collision_removal = true,
+			vertical = true,
+			texture = DROP_TEXTURE,
+			glow = RAIN_GLOW,
+		})
+		core.add_particlespawner({
+			playername = name,
+			amount = amount,
+			time = 0,
+			pos = {min = vector.new(x0, GROUND_Y + 0.05, z0), max = vector.new(x1, GROUND_Y + 0.05, z1)},
+			vel = {min = vector.new(-0.4, 0.8, -0.4), max = vector.new(0.4, 1.4, 0.4)},
+			acc = vector.new(0, -12, 0),
+			exptime = {min = 0.12, max = 0.2},
+			size = {min = 0.06, max = 0.1},
+			texture = SPLASH_TEXTURE,
+			glow = RAIN_GLOW,
+		})
+	end
+end
+
 core.register_on_joinplayer(function(player)
 	core.set_timeofday(0)
 	aaf_environment.apply(player)
+	add_rain(player)
 end)
