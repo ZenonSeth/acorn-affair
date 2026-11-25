@@ -86,7 +86,10 @@ local function in_reach(reach, radius, cell, feet, pos)
 	if reach == "inside" then
 		return vector.equals(thing, cell)
 	end
-	-- one cell up counts too, so things on a desk are in reach
+	-- one cell up counts too, so things on a desk are in reach; the own cell for thin nodeboxes like doors
+	if vector.equals(thing, cell) then
+		return true
+	end
 	return (thing.y == cell.y or thing.y == cell.y + 1) and math.abs(thing.x - cell.x) + math.abs(thing.z - cell.z) == 1
 end
 
@@ -185,7 +188,7 @@ core.register_on_joinplayer(function(player)
 			position = {x = 0.5, y = 0.85},
 			alignment = {x = 0, y = 0},
 			number = 0xFFFFFF,
-			size = {x = 2 * TEXT_SCALE, y = 0},
+			size = {x = 1.5 * TEXT_SCALE, y = 0},
 			style = 1,
 			text = "",
 		}),

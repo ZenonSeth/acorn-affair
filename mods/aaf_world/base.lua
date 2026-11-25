@@ -22,12 +22,21 @@ core.register_node("aaf_world:floor_wood", {
 	groups = {cracky = 1},
 })
 
--- Rugs repeat every 2x2 nodes, aligned to even world coordinates; the _x / _z variants start on odd x / z
+core.register_node("aaf_world:floor_tile", {
+	description = "Floor (black and charcoal tiles)",
+	tiles = {world_tile("aaf_world_floor_tile.png"), fill("#1c1a18"), fill("#1c1a18")},
+	is_ground_content = false,
+	groups = {cracky = 1},
+})
+
+-- Rugs repeat every 2x2 nodes, aligned to even world coordinates; the _x / _z / _xz variants start on odd x / z / both
 local RUG = "aaf_world_rug.png"
 local RUG_VARIANTS = {
 	{"", "", RUG},
 	{"_x", ", starting on odd x", "[combine:64x64:-32,0=" .. RUG .. ":32,0=" .. RUG},
 	{"_z", ", starting on odd z", "[combine:64x64:0,-32=" .. RUG .. ":0,32=" .. RUG},
+	{"_xz", ", starting on odd x and z", "[combine:64x64:-32,-32=" .. RUG .. ":32,-32=" .. RUG
+		.. ":-32,32=" .. RUG .. ":32,32=" .. RUG},
 }
 
 for _, v in ipairs(RUG_VARIANTS) do
@@ -57,10 +66,42 @@ local function one_way_wall(name, description, front)
 	})
 end
 
+-- Inner wall: a plain block with the face on every side and a dark cap, so it reads solid from above
+local WALL_CAP = fill("#1c1a18")
+
+-- top defaults to the dark cap; 4dir so a placed wall turns its top (and a hybrid its faces) along the wall
+local function inner_wall(name, description, tiles)
+	core.register_node(name, {
+		description = description,
+		paramtype2 = "4dir",
+		use_texture_alpha = "clip",
+		tiles = tiles,
+		is_ground_content = false,
+		groups = {cracky = 1},
+	})
+	-- Earlier corner and end variants, already placed in worlds
+	core.register_alias(name:gsub("_2s$", "_corner"), name)
+	core.register_alias(name:gsub("_2s$", "_end"), name)
+end
+
 one_way_wall("aaf_world:wall", "Wall (placeholder)", {name = fill("#3b3f4a")})
 one_way_wall("aaf_world:wallpaper", "Wall (striped wallpaper)", world_tile("aaf_world_wallpaper.png"))
+one_way_wall("aaf_world:wallpaper_blue", "Wall (grimy blue trellis wallpaper)",
+	world_tile("aaf_world_wallpaper_blue.png"))
+one_way_wall("aaf_world:old_paint", "Wall (old flaking green paint)", world_tile("aaf_world_old_paint.png"))
 -- Per node, so the chair rail stays at the top of the bottom row
 one_way_wall("aaf_world:wall_panel", "Wall (wood panelling, bottom row)", {name = "aaf_world_wall_panel.png"})
+
+local BLUE = world_tile("aaf_world_wallpaper_blue.png")
+local GREEN = world_tile("aaf_world_old_paint.png")
+inner_wall("aaf_world:wallpaper_blue_2s", "Inner wall (grimy blue trellis wallpaper)", {"blank.png", WALL_CAP, BLUE})
+inner_wall("aaf_world:old_paint_2s", "Inner wall (old flaking green paint)", {"blank.png", WALL_CAP, GREEN})
+-- Green on the front (-Z) and left (-X) at param2 0, blue on the other two sides
+inner_wall("aaf_world:paint_wallpaper_2s", "Inner wall (green paint front and left, blue wallpaper back and right)",
+	{"blank.png", WALL_CAP, BLUE, GREEN, BLUE, GREEN})
+-- A wooden ledge on top, for low walls with blinds on them
+inner_wall("aaf_world:wall_panel_2s", "Inner wall (wood panelling, bottom row)",
+	{"aaf_world_wall_panel_top.png", WALL_CAP, "aaf_world_wall_panel.png"})
 
 -- Fills spaces that are never meant to be seen (rooms behind deco doors); black under any light
 core.register_node("aaf_world:void", {
@@ -78,6 +119,19 @@ local GROUND_SIDE = fill("#1c1c1e")
 core.register_node("aaf_world:brick", {
 	description = "Brick (ground floor outside)",
 	tiles = {COPING, BRICK, BRICK},
+	is_ground_content = false,
+	groups = {cracky = 1},
+})
+
+-- Foundation under walls: a nodebox is never culled, so its coping top shows through a see-through wall top
+core.register_node("aaf_world:foundation", {
+	description = "Foundation (coping top, under walls)",
+	drawtype = "nodebox",
+	-- Top just under the boundary: the engine culls box faces flush against a solid neighbour
+	node_box = {type = "fixed", fixed = {-0.5, -0.5, -0.5, 0.5, 0.499, 0.5}},
+	paramtype = "light",
+	tiles = {COPING, GROUND_SIDE, GROUND_SIDE},
+	light_source = 5,
 	is_ground_content = false,
 	groups = {cracky = 1},
 })

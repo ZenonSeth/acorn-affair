@@ -1,4 +1,6 @@
 local parts = dofile(aaf_props.modpath .. "/parts.lua")
+-- Read-only for other mods that build their own nodes from generated parts (e.g. aaf_doors)
+aaf_props.parts = parts
 
 local FULL_BOX = {type = "fixed", fixed = {-0.5, -0.5, -0.5, 0.5, 0.5, 0.5}}
 -- only the chair back blocks, so the detective can walk through the seat
@@ -15,11 +17,16 @@ local BIG_POT_BOX = {type = "fixed", fixed = {-9/32, -0.5, -9/32, 9/32, 2/32, 9/
 local BASKET_BOX = {type = "fixed", fixed = {-8/32, -0.5, -8/32, 8/32, 0, 8/32}}
 local LAMP_POLE = {type = "fixed", fixed = {-3/32, -0.5, -3/32, 3/32, 0.5, 3/32}}
 local TRUNK_BOX = {type = "fixed", fixed = {-6/32, -0.5, -6/32, 6/32, 0.5, 6/32}}
+-- counters without their knobs: the 3/4 deep run, plus the corner's left arm
+local COUNTER_BOX = {type = "fixed", fixed = {-0.5, -0.5, -9/32, 0.5, 0.5, 0.5}}
+local COUNTER_CORNER_BOX = {type = "fixed", fixed = {{-0.5, -0.5, -9/32, 0.5, 0.5, 0.5}, {-0.5, -0.5, -0.5, 9/32, 0.5, 0.5}}}
+local KITCHEN_CHAIR_BACK = {type = "fixed", fixed = {-8/32, -0.5, 6/32, 8/32, 15/32, 8/32}}
+local PEDAL_BIN_BOX = {type = "fixed", fixed = {-6/32, -0.5, -6/32, 6/32, 6/32, 6/32}}
 local BLANK = "blank.png"
 
 -- node -> {description, part (generated shape, default the node name), walkable (default true),
 -- collision (default the full cell; "boxes" = the node boxes), light, drop, flat = texture alpha mode of a one-way,
--- front-only part}
+-- front-only part, mirror (flat parts: flipped left to right), alpha (texture alpha mode of a boxed part)}
 local PART_DEFS = {
 	desk_l = {"Desk, left half"},
 	desk_l_papers = {"Desk with papers, left half"},
@@ -29,15 +36,31 @@ local PART_DEFS = {
 	chair = {"Office chair", collision = CHAIR_BACK},
 	phone = {"Telephone", walkable = false},
 	phone_mug = {"Telephone and coffee mug", walkable = false},
+	papers_mug = {"Stack of papers and coffee mug", walkable = false},
 	typewriter = {"Typewriter", walkable = false},
 	lamp = {"Desk lamp", walkable = false, light = 10},
+	lamp_papers = {"Desk lamp with papers", walkable = false, light = 10},
 	cabinet_bottom = {"Filing cabinet (small, or the bottom of a tall one)"},
 	cabinet_top = {"Filing cabinet, top"},
 	cabinet_top_open = {"Filing cabinet, top, drawer out"},
 	cabinet_drawer = {"Filing cabinet drawer, pulled out", walkable = false},
 	coat_rack_bottom = {"Coat rack, bottom", collision = COAT_RACK_POLE},
 	coat_rack_top = {"Coat rack, top", collision = COAT_RACK_POLE},
+	floor_lamp_bottom = {"Floor lamp, bottom", collision = COAT_RACK_POLE},
+	floor_lamp_top = {"Floor lamp, top", collision = COAT_RACK_POLE, light = 12},
+	counter = {"Kitchen counter", collision = COUNTER_BOX},
+	counter_corner = {"Kitchen counter, corner (back and left arms)", collision = COUNTER_CORNER_BOX},
+	sink = {"Kitchen sink", collision = COUNTER_BOX},
+	fridge_bottom = {"Fridge, bottom", collision = "boxes", interact = "aaf_station_story:fridge"},
+	fridge_top = {"Fridge, top", collision = "boxes"},
+	faucet = {"Sink faucet (sits above the sink)", walkable = false},
+	crate_large = {"Storage crate, large", collision = "boxes"},
+	crate_small = {"Storage crate, small", collision = "boxes"},
+	reception_desk = {"Reception desk", collision = "boxes"},
+	reception_desk_l = {"Reception desk, left corner (front and left arms)", collision = "boxes"},
+	reception_desk_r = {"Reception desk, right corner (front and right arms)", collision = "boxes"},
 	wastebasket = {"Wastebasket", collision = WASTEBASKET_BOX},
+	wastebasket_empty = {"Wastebasket, empty", collision = WASTEBASKET_BOX},
 	keys = {"Keys", walkable = false},
 	board_l = {"Clipping board, left half", walkable = false},
 	board_r = {"Clipping board, right half", walkable = false},
@@ -60,6 +83,17 @@ local PART_DEFS = {
 	safe = {"Safe", collision = SAFE_BOX},
 	safe_open = {"Safe, open", collision = SAFE_BOX},
 	clock = {"Wall clock", walkable = false},
+	kitchen_table_l = {"Kitchen table, left half"},
+	kitchen_table_r = {"Kitchen table, right half"},
+	kitchen_chair = {"Kitchen chair", collision = KITCHEN_CHAIR_BACK},
+	percolator = {"Coffee percolator", walkable = false},
+	dirty_cups = {"Dirty cups", walkable = false},
+	dish_rack = {"Dish rack", walkable = false},
+	canisters = {"Kitchen canisters", walkable = false},
+	radio = {"Radio", walkable = false},
+	notice = {"Pinned notice", walkable = false},
+	calendar = {"Wall calendar", walkable = false},
+	pedal_bin = {"Pedal bin", collision = PEDAL_BIN_BOX},
 	plant_fern = {"Potted plant, bushy", collision = SMALL_POT_BOX},
 	plant_snake = {"Potted snake plant", collision = SMALL_POT_BOX},
 	plant_rubber_bottom = {"Rubber plant, bottom", collision = BIG_POT_BOX},
@@ -72,12 +106,25 @@ local PART_DEFS = {
 	office_door_bottom = {"Office door, bottom", part = "door_bottom", flat = "clip",
 		interact = "aaf_office_story:door"},
 	office_door_top = {"Office door, top", part = "door_top", flat = "clip"},
+	station_door_bottom = {"Station front door, bottom", part = "door_bottom", flat = "clip",
+		interact = "aaf_station_story:door"},
+	station_door_top = {"Station front door, top", part = "door_top", flat = "clip"},
+	station_door_r_bottom = {"Station front door, mirrored, bottom", part = "door_bottom", flat = "clip",
+		mirror = true, interact = "aaf_station_story:door"},
+	station_door_r_top = {"Station front door, mirrored, top", part = "door_top", flat = "clip", mirror = true},
+	restroom_door_bottom = {"Restroom door, bottom", part = "door_wc_bottom", flat = "clip",
+		interact = "aaf_station_story:restroom"},
+	restroom_door_top = {"Restroom door, top", part = "door_wc_top", flat = "clip"},
 	door_open_bottom = {"Open doorway, bottom", flat = "clip", walkable = false},
 	door_open_top = {"Open doorway, top", flat = "clip", walkable = false},
 	window_bottom = {"Window, bottom", flat = "blend"},
 	window_top = {"Window, top", flat = "blend"},
 	window_blinds_bottom = {"Window with blinds, bottom", flat = "blend"},
 	window_blinds_top = {"Window with blinds, top", flat = "blend"},
+	inner_window_open_bottom = {"Inner window, blinds open, bottom", alpha = "clip"},
+	inner_window_open_top = {"Inner window, blinds open, top", alpha = "clip"},
+	inner_window_shut_bottom = {"Inner window, blinds nearly shut, bottom", alpha = "clip"},
+	inner_window_shut_top = {"Inner window, blinds nearly shut, top", alpha = "clip"},
 	wall_lamp = {"Wall lamp", walkable = false, light = 5},
 	wall_lamp_flicker = {"Wall lamp, flickering", part = "wall_lamp", walkable = false, light = 5},
 	wall_lamp_flicker_dim = {"Wall lamp, flickering (dimmed)", part = "wall_lamp", walkable = false, light = 2,
@@ -103,6 +150,10 @@ local SETS = {
 	cabinet_open = {"Filing cabinet, drawer out",
 		{"cabinet_bottom", 0, 0, 0}, {"cabinet_top_open", 0, 1, 0}, {"cabinet_drawer", 0, 1, -1}},
 	coat_rack = {"Coat rack", {"coat_rack_bottom", 0, 0, 0}, {"coat_rack_top", 0, 1, 0}},
+	floor_lamp = {"Floor lamp", {"floor_lamp_bottom", 0, 0, 0}, {"floor_lamp_top", 0, 1, 0}},
+	fridge = {"Fridge", {"fridge_bottom", 0, 0, 0}, {"fridge_top", 0, 1, 0}},
+	kitchen_sink = {"Kitchen sink with faucet", {"sink", 0, 0, 0}, {"faucet", 0, 1, 0}},
+	kitchen_table = {"Kitchen table", {"kitchen_table_l", 0, 0, 0}, {"kitchen_table_r", 1, 0, 0}},
 	board = {"Clipping board", {"board_l", 0, 0, 0}, {"board_r", 1, 0, 0}},
 	board_plain = {"Notice board", {"board_l_plain", 0, 0, 0}, {"board_r_plain", 1, 0, 0}},
 	bookshelf = {"Bookshelf, empty", {"bookshelf_bottom", 0, 0, 0}, {"bookshelf_top", 0, 1, 0}},
@@ -113,9 +164,17 @@ local SETS = {
 	plant_palm = {"Palm in a basket", {"plant_palm_bottom", 0, 0, 0}, {"plant_palm_top", 0, 1, 0}},
 	door = {"Door", {"door_bottom", 0, 0, 0}, {"door_top", 0, 1, 0}},
 	office_door = {"Office door", {"office_door_bottom", 0, 0, 0}, {"office_door_top", 0, 1, 0}},
+	station_door = {"Station front door", {"station_door_bottom", 0, 0, 0}, {"station_door_top", 0, 1, 0}},
+	station_door_r = {"Station front door, mirrored (right of a pair)",
+		{"station_door_r_bottom", 0, 0, 0}, {"station_door_r_top", 0, 1, 0}},
+	restroom_door = {"Restroom door", {"restroom_door_bottom", 0, 0, 0}, {"restroom_door_top", 0, 1, 0}},
 	door_open = {"Open doorway", {"door_open_bottom", 0, 0, 0}, {"door_open_top", 0, 1, 0}},
 	window = {"Window", {"window_bottom", 0, 0, 0}, {"window_top", 0, 1, 0}},
 	window_blinds = {"Window with blinds", {"window_blinds_bottom", 0, 0, 0}, {"window_blinds_top", 0, 1, 0}},
+	inner_window_open = {"Inner window, blinds open (stands on a low wall)",
+		{"inner_window_open_bottom", 0, 0, 0}, {"inner_window_open_top", 0, 1, 0}},
+	inner_window_shut = {"Inner window, blinds nearly shut (stands on a low wall)",
+		{"inner_window_shut_bottom", 0, 0, 0}, {"inner_window_shut_top", 0, 1, 0}},
 	sofa = {"Sofa, brown leather", {"sofa_l", 0, 0, 0}, {"sofa_r", 1, 0, 0}},
 	sofa_teal = {"Sofa, teal", {"sofa_l_teal", 0, 0, 0}, {"sofa_r_teal", 1, 0, 0}},
 	sofa_plum = {"Sofa, plum", {"sofa_l_plum", 0, 0, 0}, {"sofa_r_plum", 1, 0, 0}},
@@ -142,13 +201,15 @@ for name, def in pairs(PART_DEFS) do
 	if def.flat then
 		node.node_box = {type = "regular"}
 		node.use_texture_alpha = def.flat
-		node.tiles = {BLANK, BLANK, BLANK, BLANK, BLANK, {name = part.tiles[1], backface_culling = true}}
+		local front = part.tiles[1] .. (def.mirror and "^[transformFX" or "")
+		node.tiles = {BLANK, BLANK, BLANK, BLANK, BLANK, {name = front, backface_culling = true}}
 	else
 		node.node_box = {type = "fixed", fixed = part.boxes}
 		if walkable and def.collision ~= "boxes" then
 			node.collision_box = def.collision or FULL_BOX
 		end
 		node.tiles = part.tiles
+		node.use_texture_alpha = def.alpha
 	end
 	core.register_node("aaf_props:" .. name, node)
 end

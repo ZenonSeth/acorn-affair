@@ -12,7 +12,10 @@ function aaf_places.register(name, def)
 	places[name] = {spawn = vector.copy(def.spawn)}
 end
 
-aaf_places.register(DEFAULT_PLACE, {spawn = constants.spawn_pos})
+for name, spawn in pairs(constants.places) do
+	aaf_places.register(name, {spawn = spawn})
+end
+assert(places[DEFAULT_PLACE], "aaf_places: constants.places has no " .. DEFAULT_PLACE)
 
 function aaf_places.exists(name)
 	return places[name] ~= nil
