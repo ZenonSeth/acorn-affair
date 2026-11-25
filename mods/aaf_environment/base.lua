@@ -42,7 +42,7 @@ local constants = aaf_utils.constants
 -- A thin streak, brighter at the bottom, on a 32 px square so the particle stays narrow
 local DROP_TEXTURE = "[fill:32x32:#00000000^[fill:1x14:15,0:#8c9cb060^[fill:1x18:15,14:#aabacec0"
 local SPLASH_TEXTURE = "[fill:2x2:#aabace70"
-local DROP_SIZE = 0.9
+local DROP_SIZE = 1.9
 local DROP_SPEED = 12
 -- Drops (and splashes) per second for each node of open street
 local RAIN_DENSITY = 1
@@ -91,4 +91,5 @@ core.register_on_joinplayer(function(player)
 	core.set_timeofday(0)
 	aaf_environment.apply(player)
 	add_rain(player)
+	aaf_audio.sfx.start_loop(player, "ambience", "rain")
 end)

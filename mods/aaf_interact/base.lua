@@ -78,13 +78,18 @@ local function horizontal_distance(a, b)
 	return math.sqrt((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2)
 end
 
+-- The detective's own cell or the one above it (things hung on a wall at head height)
+local function in_column(thing, cell)
+	return thing.x == cell.x and thing.z == cell.z and (thing.y == cell.y or thing.y == cell.y + 1)
+end
+
 local function in_reach(reach, radius, cell, feet, pos)
 	if reach == "radius" then
 		return horizontal_distance(feet, pos) <= radius and math.abs(pos.y - feet.y) <= VERTICAL_REACH
 	end
 	local thing = vector.round(pos)
 	if reach == "inside" then
-		return vector.equals(thing, cell)
+		return in_column(thing, cell)
 	end
 	-- one cell up counts too, so things on a desk are in reach; the own cell for thin nodeboxes like doors
 	if vector.equals(thing, cell) then
@@ -93,9 +98,9 @@ local function in_reach(reach, radius, cell, feet, pos)
 	return (thing.y == cell.y or thing.y == cell.y + 1) and math.abs(thing.x - cell.x) + math.abs(thing.z - cell.z) == 1
 end
 
--- Things in the detective's own cell always count as faced
+-- Things in the detective's own cell (or above it) always count as faced
 local function is_faced(facing, cell, feet, pos)
-	if not facing or vector.equals(vector.round(pos), cell) then
+	if not facing or in_column(vector.round(pos), cell) then
 		return true
 	end
 	local dx, dz = pos.x - feet.x, pos.z - feet.z
@@ -150,10 +155,15 @@ function aaf_interact.find_target(player)
 		if low and not crouching then
 			return
 		end
+		local faced = is_faced(facing, cell, feet, pos)
+		-- Unfaced things used to stay usable as a fallback; off for now
+		if not faced then
+			return
+		end
 		local candidate = {
 			target = target, handler = handler, def = def, low = low,
 			priority = def._aaf_interact_priority or handler.priority or 0,
-			facing = is_faced(facing, cell, feet, pos),
+			facing = faced,
 			rank = REACH_RANK[reach], distance = horizontal_distance(feet, pos),
 			raised = reach == "adjacent" and math.floor(pos.y + 0.5) > cell.y,
 		}

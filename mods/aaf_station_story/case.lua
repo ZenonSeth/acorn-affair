@@ -6,6 +6,8 @@ local FACT_PREFIX = "station:fact_"
 local KNOWS_PREFIX = "station:knows_"
 local SEEN_PREFIX = "station:seen_"
 local ACCUSED_PREFIX = "station:accused_"
+-- JSON list of fact ids in the order the player found them
+local FOUND_KEY = "station:found"
 
 local deduction_of, suspect_of = {}, {}
 for _, deduction in ipairs(graph.deductions) do
@@ -25,11 +27,6 @@ end
 -- The detective's own lines
 local function say(player, text)
 	aaf_dialog.think(player, text)
-end
-
--- Documents and notebook notes go to chat until the document panel and notebook exist
-local function note(player, text)
-	core.chat_send_player(player:get_player_name(), text)
 end
 
 -- True once the player knows the fact or has made the deduction
@@ -52,10 +49,14 @@ function aaf_station_story.is_accused(player, suspect)
 	return aaf_flags.get(player, ACCUSED_PREFIX .. suspect) ~= nil
 end
 
+local notebook_changed
+
 -- The phone calls this; it unlocks the suspect's alibi
 function aaf_station_story.accuse(player, suspect)
 	assert(alibi_of[suspect], "aaf_station_story: " .. tostring(suspect) .. " cannot be accused")
-	aaf_flags.set(player, ACCUSED_PREFIX .. suspect, true)
+	notebook_changed(player, function()
+		aaf_flags.set(player, ACCUSED_PREFIX .. suspect, true)
+	end)
 end
 
 function aaf_station_story.is_cleared(player, suspect)
@@ -188,17 +189,102 @@ function aaf_station_story.learn(player, id)
 	if aaf_station_story.knows(player, id) then
 		return
 	end
-	aaf_flags.set(player, FACT_PREFIX .. id, true)
-	for _, deduction in ipairs(update(player)) do
-		if deduction.title then
-			note(player, "(Notebook: " .. deduction.title .. ")")
+	notebook_changed(player, function()
+		aaf_flags.set(player, FACT_PREFIX .. id, true)
+		local meta = player:get_meta()
+		local found = aaf_utils.get_json(meta, FOUND_KEY) or {}
+		found[#found + 1] = id
+		aaf_utils.set_json(meta, FOUND_KEY, found)
+		update(player)
+	end)
+end
+
+-- The known facts in the order found; ones set by hand (e.g. /flag) follow, by title
+function aaf_station_story.found(player)
+	local list, listed = {}, {}
+	for _, id in ipairs(aaf_utils.get_json(player:get_meta(), FOUND_KEY) or {}) do
+		if facts[id] and not listed[id] and aaf_station_story.knows(player, id) then
+			list[#list + 1] = id
+			listed[id] = true
 		end
 	end
+	local rest = {}
+	for id in pairs(facts) do
+		if not listed[id] and aaf_station_story.knows(player, id) then
+			rest[#rest + 1] = id
+		end
+	end
+	table.sort(rest, function(a, b)
+		return facts[a].title < facts[b].title
+	end)
+	for _, id in ipairs(rest) do
+		list[#list + 1] = id
+	end
+	return list
+end
+
+-- What the notebook shows, as {key, line, parent} entries: parent is an entry that, if new too, says it already
+local function snapshot(player)
+	local list = {}
+	local function add(key, line, parent)
+		list[#list + 1] = {key = key, line = line, parent = parent}
+	end
+	for _, id in ipairs(aaf_station_story.found(player)) do
+		add("clue:" .. id, "Clue added: " .. facts[id].title)
+	end
+	for i, note in ipairs(graph.notes) do
+		if aaf_station_story.knows(player, note.clue) and holds(player, note.when) then
+			add("note:" .. i, "Note added: " .. facts[note.clue].title, "clue:" .. note.clue)
+		end
+	end
+	for _, deduction in ipairs(graph.deductions) do
+		if deduction.title and aaf_station_story.knows(player, deduction.id) then
+			add("deduction:" .. deduction.id, "Worked out: " .. deduction.title)
+		end
+	end
+	for _, suspect in ipairs(graph.suspects) do
+		if holds(player, suspect.listed) then
+			local key = "suspect:" .. suspect.id
+			add(key, "Suspect added: " .. suspect.name)
+			for j, line in ipairs(suspect.lines) do
+				if holds(player, line.when) then
+					add(key .. ":" .. j, "Note added: " .. suspect.name, key)
+				end
+				if line.struck and holds(player, line.struck) then
+					add(key .. ":struck" .. j, "Note added: " .. suspect.name, key)
+				end
+			end
+			if aaf_station_story.is_cleared(player, suspect.id) then
+				add(key .. ":cleared", "Cleared: " .. suspect.name)
+			end
+		end
+	end
+	return list
+end
+
+-- Runs change(), then rebuilds the notebook and announces what it gained
+function notebook_changed(player, change)
+	local before = {}
+	for _, entry in ipairs(snapshot(player)) do
+		before[entry.key] = true
+	end
+	change()
+	local lines, shown = {}, {}
+	for _, entry in ipairs(snapshot(player)) do
+		local new = not before[entry.key]
+		if new and not (entry.parent and not before[entry.parent]) and not shown[entry.line] then
+			lines[#lines + 1] = entry.line
+			shown[entry.line] = true
+		end
+	end
+	aaf_notebook.refresh(player)
+	aaf_notebook.notify(player, lines)
 end
 
 -- Facts set by hand (e.g. /flag) are followed through on the next join
 core.register_on_joinplayer(function(player)
 	update(player)
+	aaf_notebook.refresh(player)
 end)
 
 -- Thing key -> {label, then one of: fact (+ doc: shown as a document; before: the line while the fact's gate
@@ -208,8 +294,8 @@ local THINGS = {
 	-- Reception
 	["aaf_props:register#1"] = {label = "Read the register", fact = "register", doc = true},
 	["aaf_props:papers_mug#1"] = {label = "Read the papers", fact = "noise_complaint", doc = true},
-	["aaf_props:board_l_plain#2"] = {label = "Read the notice", fact = "missing_notice", doc = true},
-	["aaf_props:board_r_plain#2"] = {label = "Read the notice", fact = "window_notice", doc = true},
+	["aaf_props:board_l_plain#2"] = {label = "Read the missing property notice", fact = "missing_notice", doc = true},
+	["aaf_props:board_r_plain#2"] = {label = "Read the window notice", fact = "window_notice", doc = true},
 	["aaf_props:reception_desk#1"] = {label = "Search Miller's drawer", fact = "miller_log", doc = true,
 		locked = "Locked.",
 		cleared = "Miller never left that desk. Mrs. Dabney made sure of it. Miller was clean."},
@@ -237,6 +323,8 @@ local THINGS = {
 		before = "Peanut shells. Jenkins is a slob. Not a crime."},
 	["aaf_props:wastebasket#12"] = {label = "Look in the wastebasket", line = "Wrappers and a racing form. Jenkins lost."},
 	["aaf_props:desk_l#13"] = {label = "Search the empty desk", line = "Nobody's desk. Miller's memos pile up on it like snow."},
+	["aaf_props:paper_scrap#17"] = {label = "Look at the paper", line = "Last week's duty roster, gone soft from the "
+		.. "radiator. Fred's name is on every night shift. Nobody's crossed it out."},
 	-- Chief's office
 	["aaf_props:display_case_top#30"] = {label = "Look at the display case", fact = "display_case"},
 	["aaf_props:certificate_blue#30"] = {label = "Read the certificate", fact = "certificate", doc = true},
@@ -291,15 +379,10 @@ local function use(player, thing)
 		return
 	end
 	local cleared = not known and thing.cleared
-	if thing.doc then
-		note(player, "[" .. fact.title .. "] " .. fact.line)
-		if cleared then
-			say(player, cleared)
-		end
-	else
-		-- One thought at a time, so the alibi's verdict joins the line
-		say(player, cleared and fact.line .. " " .. cleared or fact.line)
-	end
+	-- Documents read as "Title: line" until the document panel exists
+	local line = thing.doc and fact.title .. ": " .. fact.line or fact.line
+	-- One thought at a time, so the alibi's verdict joins the line
+	say(player, cleared and line .. " " .. cleared or line)
 	aaf_station_story.learn(player, id)
 end
 

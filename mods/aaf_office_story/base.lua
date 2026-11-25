@@ -89,14 +89,16 @@ aaf_places.register_thing(PLACE, "aaf_props:phone_mug#1", {
 	end,
 })
 
--- Dead ends of the key hunt: spot id -> {keys, label, line}
+-- Dead ends of the key hunt: spot id -> {keys, label, line, after (once the keys are found; none = inert)}
 local SPOTS = {
 	sofa = {keys = {"aaf_props:sofa_l#1", "aaf_props:sofa_r#1"}, label = "Search the sofa",
 		line = "Between the cushions: a nickel, a button and the last of my dignity. No keys."},
 	wastebasket = {keys = {"aaf_props:wastebasket#1"}, label = "Look in the wastebasket",
-		line = "Old case files. Old regrets. No keys."},
+		line = "Old case files. Old regrets. No keys.",
+		after = "Old case files. Old regrets. They'll keep."},
 	safe = {keys = {"aaf_props:safe#1"}, label = "Open the safe",
-		line = "My safe. Three dollars and a photograph of a better man. No keys."},
+		line = "My safe. Three dollars and a photograph of a better man. No keys.",
+		after = "Three dollars and a photograph of a better man. Neither one's coming with me."},
 	cabinet_milk = {keys = {"aaf_props:cabinet_bottom#1"}, label = "Search the filing cabinet",
 		line = "A bottle of milk. Gone sour, like everything else in this town."},
 	cabinet_bills = {keys = {"aaf_props:cabinet_bottom#2"}, label = "Search the filing cabinet",
@@ -119,7 +121,14 @@ for id, spot in pairs(SPOTS) do
 	for _, key in ipairs(spot.keys) do
 		aaf_places.register_thing(PLACE, key, {
 			label = spot.label,
+			can_interact = function(player)
+				return aaf_flags.get(player, CALL_DONE) and (spot.after ~= nil or not aaf_flags.get(player, CAN_LEAVE))
+			end,
 			on_interact = function(player)
+				if aaf_flags.get(player, CAN_LEAVE) then
+					say(player, spot.after)
+					return
+				end
 				say(player, spot.line)
 				if aaf_tasks.has(player, TASK_KEYS) then
 					aaf_flags.set(player, SEARCHED_PREFIX .. id, true)
@@ -148,6 +157,9 @@ aaf_places.register_thing(PLACE, "aaf_props:desk_r_keys#1", {
 })
 
 aaf_interact.register("aaf_office_story:door", {
+	can_interact = function(player)
+		return aaf_flags.get(player, CALL_DONE)
+	end,
 	label = function(player)
 		return aaf_flags.get(player, CAN_LEAVE) and "Leave" or "Try the door"
 	end,

@@ -192,6 +192,13 @@ function aaf_avatar.is_building(player)
 	return building[player:get_player_name()] ~= nil
 end
 
+local on_building = {}
+
+-- fn(player, on) runs after the player enters or leaves build mode
+function aaf_avatar.register_on_building(fn)
+	on_building[#on_building + 1] = fn
+end
+
 -- Build mode: no detective, the player flies free with the hotbar and a reach of 10
 function aaf_avatar.set_building(player, on)
 	local name = player:get_player_name()
@@ -226,6 +233,9 @@ function aaf_avatar.set_building(player, on)
 		player:hud_set_flags(PLAY_HUD)
 		player:set_look_vertical(START_PITCH)
 		start_when_loaded(player, state.pos)
+	end
+	for _, fn in ipairs(on_building) do
+		fn(player, on)
 	end
 end
 

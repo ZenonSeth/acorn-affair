@@ -1,7 +1,7 @@
 local CAN_LEAVE = "station:can_leave"
 
 local LOCKED_LINE = "Not until this is solved."
-local RESTROOM_LINE = "Some mysteries a man leaves alone."
+local RESTROOM_LINE = "Some mysteries are best left alone."
 local KITCHEN_STUCK_LINE = "Stuck. Somebody should fix this door. Somebody won't."
 local LEAVE_LINES = {"Back to the office. The cab driver remembered me. Neither of us was happy about it."}
 local ARRIVED = "station:arrived"
@@ -56,6 +56,7 @@ aaf_places.register_on_arrive("station", function(player)
 		aaf_flags.set(player, ARRIVED, true)
 		aaf_tasks.add(player, "station:case", "Find out who took the ACORN")
 		aaf_tasks.add(player, "station:report", "Report to the Chief (front desk phone)")
+		aaf_notebook.refresh(player)
 	end
 end)
 
