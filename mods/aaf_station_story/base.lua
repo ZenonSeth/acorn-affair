@@ -39,6 +39,13 @@ aaf_interact.register("aaf_station_story:fridge", {
 	end,
 })
 
+aaf_interact.register("aaf_station_story:sink", {
+	label = "Look at the sink",
+	on_interact = function(player)
+		say(player, "A dripping tap. It had been talking all night. Nobody listened.")
+	end,
+})
+
 -- Stuck until the chief's tip about Fred sets the flag
 aaf_doors.set_rule("kitchen", function(player)
 	return aaf_flags.get(player, KITCHEN_UNSTUCK) and true or KITCHEN_STUCK_LINE

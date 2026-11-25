@@ -12,6 +12,8 @@ local TEXT_SCALE = aaf_utils.constants.hud_text_scale
 
 -- Better reach modes win ties of priority: standing on a thing beats standing next to it
 local REACH_RANK = {inside = 3, adjacent = 2, radius = 1}
+-- A thing counts as faced within 60 degrees either side of the detective's facing
+local FACING_COS = math.cos(math.rad(60))
 local DEFAULT_REACH = {node = "adjacent", object = "radius"}
 
 -- id -> handler {label, on_interact, can_interact, reach, radius, priority, low}
@@ -93,13 +95,25 @@ local function in_reach(reach, radius, cell, feet, pos)
 	return (thing.y == cell.y or thing.y == cell.y + 1) and math.abs(thing.x - cell.x) + math.abs(thing.z - cell.z) == 1
 end
 
--- Best candidate first: low things (only candidates while crouched), higher priority, better reach mode,
--- raised (on top of the thing next to it), nearer
+-- Things in the detective's own cell always count as faced
+local function is_faced(facing, cell, feet, pos)
+	if not facing or vector.equals(vector.round(pos), cell) then
+		return true
+	end
+	local dx, dz = pos.x - feet.x, pos.z - feet.z
+	local len = math.sqrt(dx * dx + dz * dz)
+	return len == 0 or (dx * facing.x + dz * facing.z) / len >= FACING_COS
+end
+
+-- Best candidate first: low things (only candidates while crouched), higher priority, faced, better reach
+-- mode, raised (on top of the thing next to it), nearer
 local function better(a, b)
 	if a.low ~= b.low then
 		return a.low
 	elseif a.priority ~= b.priority then
 		return a.priority > b.priority
+	elseif a.facing ~= b.facing then
+		return a.facing
 	elseif a.rank ~= b.rank then
 		return a.rank > b.rank
 	elseif a.raised ~= b.raised then
@@ -118,6 +132,7 @@ function aaf_interact.find_target(player)
 	-- The cell the detective stands in; feet sit on the floor's top face, so nudge them up into it
 	local cell = vector.round(vector.offset(feet, 0, 0.1, 0))
 	local crouching = aaf_avatar.is_crouching(player)
+	local facing = aaf_avatar.get_facing(player)
 	local best
 	local low_hidden = false
 
@@ -143,6 +158,7 @@ function aaf_interact.find_target(player)
 		local candidate = {
 			target = target, handler = handler, def = def, low = low,
 			priority = def._aaf_interact_priority or handler.priority or 0,
+			facing = is_faced(facing, cell, feet, pos),
 			rank = REACH_RANK[reach], distance = horizontal_distance(feet, pos),
 			raised = reach == "adjacent" and math.floor(pos.y + 0.5) > cell.y,
 		}

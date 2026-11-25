@@ -41,3 +41,9 @@ function aaf_places.move(player, name)
 	player:get_meta():set_string(STORE_KEY, name == DEFAULT_PLACE and "" or name)
 	return true
 end
+
+-- A tagged thing's id in the detective's place, e.g. "office/aaf_props:safe#1", so each place numbers its own tags; nil when untagged
+function aaf_places.thing_id(player, node)
+	local id = aaf_utils.thing_id(node)
+	return id and aaf_places.get(player) .. "/" .. id
+end

@@ -85,6 +85,13 @@ function aaf_avatar.get_pos(player)
 	return pos and vector.offset(pos, 0, -HALF_HEIGHT, 0)
 end
 
+-- Horizontal unit vector the detective faces (the way it last walked), or nil while it does not exist
+function aaf_avatar.get_facing(player)
+	local session = sessions[player:get_player_name()]
+	local yaw = session and session.avatar:get_yaw()
+	return yaw and vector.new(-math.sin(yaw), 0, math.cos(yaw))
+end
+
 -- True while the player holds Sneak and the detective crouches
 function aaf_avatar.is_crouching(player)
 	local session = sessions[player:get_player_name()]
