@@ -28,9 +28,9 @@ function aaf_doors.exists(id)
 	return DOORS[id] ~= nil
 end
 
--- Until the dialog system exists, the detective's lines go to chat
+-- The detective's own lines
 local function say(player, text)
-	core.chat_send_player(player:get_player_name(), text)
+	aaf_dialog.think(player, text)
 end
 
 local function set_open(pos, id, open, param2)

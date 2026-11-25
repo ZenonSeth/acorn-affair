@@ -77,6 +77,20 @@ core.register_entity("aaf_avatar:rig", {
 local sessions = {}
 -- player name -> {pos = detective position to return to, privs = the privs it had before}
 local building = {}
+-- player name -> {reason -> true} while something (a dialog, a cutscene) holds the detective still
+local frozen = {}
+
+-- While any reason holds, the detective stands still and nothing can be used
+function aaf_avatar.set_frozen(player, reason, on)
+	local name = player:get_player_name()
+	local reasons = frozen[name] or {}
+	reasons[reason] = on or nil
+	frozen[name] = next(reasons) and reasons or nil
+end
+
+function aaf_avatar.is_frozen(player)
+	return frozen[player:get_player_name()] ~= nil
+end
 
 -- Feet position of the player's detective, or nil while it does not exist
 function aaf_avatar.get_pos(player)
@@ -168,6 +182,9 @@ function aaf_avatar.teleport(player, pos)
 	session.avatar:set_pos(pos)
 	session.avatar:set_velocity(vector.zero())
 	session.last_pos = vector.copy(pos)
+	-- The rig would otherwise fly the camera across the map
+	session.rig:set_pos(rig_target(player, session, pos))
+	session.rig:set_velocity(vector.zero())
 	return true
 end
 
@@ -221,6 +238,7 @@ core.register_on_leaveplayer(function(player)
 	if building[name] then
 		aaf_avatar.set_building(player, false)
 	end
+	frozen[name] = nil
 	remove_session(name)
 end)
 
@@ -241,6 +259,11 @@ end
 
 local function move_avatar(player, session)
 	local avatar = session.avatar
+	local vel = avatar:get_velocity()
+	if frozen[player:get_player_name()] then
+		avatar:set_velocity(vector.new(0, vel.y, 0))
+		return
+	end
 	local ctrl = player:get_player_control()
 	set_crouching(session, ctrl.sneak)
 	local speed = session.crouching and CROUCH_SPEED or SPEED
@@ -251,7 +274,6 @@ local function move_avatar(player, session)
 	local dir = vector.normalize(vector.new(
 		-math.sin(yaw) * fwd + math.cos(yaw) * side, 0,
 		math.cos(yaw) * fwd + math.sin(yaw) * side))
-	local vel = avatar:get_velocity()
 	avatar:set_velocity(vector.new(dir.x * speed, vel.y, dir.z * speed))
 	if dir.x ~= 0 or dir.z ~= 0 then
 		avatar:set_yaw(math.atan2(-dir.x, dir.z))

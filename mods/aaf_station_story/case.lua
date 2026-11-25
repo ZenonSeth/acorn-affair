@@ -1,0 +1,317 @@
+local graph = aaf_station_story.graph
+local facts = graph.facts
+
+local PLACE = "station"
+local FACT_PREFIX = "station:fact_"
+local KNOWS_PREFIX = "station:knows_"
+local SEEN_PREFIX = "station:seen_"
+local ACCUSED_PREFIX = "station:accused_"
+
+local deduction_of, suspect_of = {}, {}
+for _, deduction in ipairs(graph.deductions) do
+	deduction_of[deduction.id] = deduction
+end
+for _, suspect in ipairs(graph.suspects) do
+	suspect_of[suspect.id] = suspect
+end
+-- suspect id -> the fact that clears them
+local alibi_of = {}
+for id, fact in pairs(facts) do
+	if fact.alibi then
+		alibi_of[fact.alibi] = id
+	end
+end
+
+-- The detective's own lines
+local function say(player, text)
+	aaf_dialog.think(player, text)
+end
+
+-- Documents and notebook notes go to chat until the document panel and notebook exist
+local function note(player, text)
+	core.chat_send_player(player:get_player_name(), text)
+end
+
+-- True once the player knows the fact or has made the deduction
+function aaf_station_story.knows(player, id)
+	if facts[id] then
+		return aaf_flags.get(player, FACT_PREFIX .. id) ~= nil
+	end
+	assert(deduction_of[id], "aaf_station_story: unknown fact or deduction " .. tostring(id))
+	return aaf_flags.get(player, KNOWS_PREFIX .. id) ~= nil
+end
+
+local holds
+
+function aaf_station_story.is_listed(player, suspect)
+	return holds(player, assert(suspect_of[suspect], "aaf_station_story: unknown suspect " .. tostring(suspect)).listed)
+end
+
+function aaf_station_story.is_accused(player, suspect)
+	assert(suspect_of[suspect], "aaf_station_story: unknown suspect " .. tostring(suspect))
+	return aaf_flags.get(player, ACCUSED_PREFIX .. suspect) ~= nil
+end
+
+-- The phone calls this; it unlocks the suspect's alibi
+function aaf_station_story.accuse(player, suspect)
+	assert(alibi_of[suspect], "aaf_station_story: " .. tostring(suspect) .. " cannot be accused")
+	aaf_flags.set(player, ACCUSED_PREFIX .. suspect, true)
+end
+
+function aaf_station_story.is_cleared(player, suspect)
+	local alibi = alibi_of[suspect]
+	return alibi ~= nil and aaf_station_story.knows(player, alibi)
+end
+
+local function holds_leaf(player, id)
+	local kind, rest = id:match("^(%a+):(.+)$")
+	if kind == "seen" then
+		return aaf_flags.get(player, SEEN_PREFIX .. rest) ~= nil
+	elseif kind == "accused" then
+		return aaf_station_story.is_accused(player, rest)
+	elseif kind == "suspect" then
+		return aaf_station_story.is_listed(player, rest)
+	end
+	return aaf_station_story.knows(player, id)
+end
+
+-- Whether a requirement (see graph.lua) holds for the player
+function holds(player, req)
+	if type(req) == "string" then
+		return holds_leaf(player, req)
+	elseif req.all then
+		for _, sub in ipairs(req.all) do
+			if not holds(player, sub) then
+				return false
+			end
+		end
+		return true
+	elseif req.any then
+		for _, sub in ipairs(req.any) do
+			if holds(player, sub) then
+				return true
+			end
+		end
+		return false
+	elseif req.none then
+		for _, sub in ipairs(req.none) do
+			if holds(player, sub) then
+				return false
+			end
+		end
+		return true
+	end
+	local count = 0
+	for _, sub in ipairs(req.of) do
+		if holds(player, sub) then
+			count = count + 1
+		end
+	end
+	return count >= req.at_least
+end
+aaf_station_story.holds = holds
+
+-- Catches typos in graph.lua at load
+local function check(req, where)
+	if type(req) == "string" then
+		local kind, rest = req:match("^(%a+):(.+)$")
+		local ok
+		if kind == "seen" then
+			ok = facts[rest] and facts[rest].gate
+		elseif kind == "accused" then
+			ok = alibi_of[rest]
+		elseif kind == "suspect" then
+			ok = suspect_of[rest]
+		else
+			ok = facts[req] or deduction_of[req]
+		end
+		assert(ok, "aaf_station_story: " .. where .. " has an unknown requirement " .. req)
+		return
+	end
+	assert(type(req) == "table", "aaf_station_story: " .. where .. " has a bad requirement")
+	local list = req.all or req.any or req.none or req.of
+	assert(type(list) == "table" and (req.of == nil or type(req.at_least) == "number"),
+		"aaf_station_story: " .. where .. " has a bad requirement")
+	for _, sub in ipairs(list) do
+		check(sub, where)
+	end
+end
+for id, fact in pairs(facts) do
+	if fact.gate then
+		check(fact.gate, "fact " .. id)
+	end
+	assert(not fact.alibi or suspect_of[fact.alibi], "aaf_station_story: fact " .. id .. " clears an unknown suspect")
+end
+for _, deduction in ipairs(graph.deductions) do
+	check(deduction.req, "deduction " .. deduction.id)
+end
+for _, note in ipairs(graph.notes) do
+	assert(facts[note.clue], "aaf_station_story: a note is under an unknown clue " .. tostring(note.clue))
+	check(note.when, "a note under " .. note.clue)
+end
+for _, suspect in ipairs(graph.suspects) do
+	check(suspect.listed, "suspect " .. suspect.id)
+	if suspect.accuse then
+		check(suspect.accuse, "suspect " .. suspect.id)
+	end
+	for _, line in ipairs(suspect.lines) do
+		check(line.when, "suspect " .. suspect.id)
+		if line.struck then
+			check(line.struck, "suspect " .. suspect.id)
+		end
+	end
+end
+for i, hint in ipairs(graph.hints) do
+	check(hint.when, "hint " .. i)
+end
+
+-- Makes every deduction that now follows; returns the new ones in order
+local function update(player)
+	local new = {}
+	local changed = true
+	while changed do
+		changed = false
+		for _, deduction in ipairs(graph.deductions) do
+			if not aaf_station_story.knows(player, deduction.id) and holds(player, deduction.req) then
+				aaf_flags.set(player, KNOWS_PREFIX .. deduction.id, true)
+				new[#new + 1] = deduction
+				changed = true
+			end
+		end
+	end
+	return new
+end
+
+-- Records a fact and whatever follows from it
+function aaf_station_story.learn(player, id)
+	assert(facts[id], "aaf_station_story: unknown fact " .. tostring(id))
+	if aaf_station_story.knows(player, id) then
+		return
+	end
+	aaf_flags.set(player, FACT_PREFIX .. id, true)
+	for _, deduction in ipairs(update(player)) do
+		if deduction.title then
+			note(player, "(Notebook: " .. deduction.title .. ")")
+		end
+	end
+end
+
+-- Facts set by hand (e.g. /flag) are followed through on the next join
+core.register_on_joinplayer(function(player)
+	update(player)
+end)
+
+-- Thing key -> {label, then one of: fact (+ doc: shown as a document; before: the line while the fact's gate
+-- does not hold; later = {when, line} once it does; locked: the line until its alibi suspect is accused;
+-- cleared: narration when the alibi is read), or line (flavor only)}
+local THINGS = {
+	-- Reception
+	["aaf_props:register#1"] = {label = "Read the register", fact = "register", doc = true},
+	["aaf_props:papers_mug#1"] = {label = "Read the papers", fact = "noise_complaint", doc = true},
+	["aaf_props:board_l_plain#2"] = {label = "Read the notice", fact = "missing_notice", doc = true},
+	["aaf_props:board_r_plain#2"] = {label = "Read the notice", fact = "window_notice", doc = true},
+	["aaf_props:reception_desk#1"] = {label = "Search Miller's drawer", fact = "miller_log", doc = true,
+		locked = "Locked.",
+		cleared = "Miller never left that desk. Mrs. Dabney made sure of it. Miller was clean."},
+	-- Detectives' room
+	["aaf_props:board_l_plain#10"] = {label = "Read the memo", fact = "memo", doc = true},
+	["aaf_props:board_r_plain#10"] = {label = "Read the memo", fact = "memo", doc = true},
+	["aaf_props:lamp_papers#10"] = {label = "Read the report", fact = "fred_report", doc = true},
+	["aaf_props:papers_mug#10"] = {label = "Read the list", fact = "fred_list", doc = true},
+	["aaf_props:desk_l_papers#10"] = {label = "Search Fred's drawer", line = "Three pens. All of them Miller's."},
+	["aaf_props:lamp_sandwich#11"] = {label = "Look at the sandwich", fact = "sandwich",
+		before = "Somebody's lunch. Not mine. Not evidence."},
+	["aaf_props:phone_papers#11"] = {label = "Read the note", fact = "thompson_note", doc = true},
+	["aaf_props:desk_l#11"] = {label = "Search Thompson's drawer", fact = "thompson_log", doc = true,
+		locked = "Locked.",
+		cleared = "Thompson watched that desk for an hour and a half and never saw a thing. He was watching at "
+			.. "eye level. Most people do. Thompson was clean."},
+	["aaf_props:lamp_peanuts#12"] = {label = "Look at the peanuts",
+		line = "A jar of peanuts, guarded like the crown jewels."},
+	["aaf_props:phone_papers#12"] = {label = "Read the complaint", fact = "peanut_complaint", doc = true},
+	["aaf_props:desk_l_papers#12"] = {label = "Search the bottom drawer", fact = "ticket_stub", doc = true,
+		locked = "Locked.",
+		cleared = "Jenkins. A man who'd rather be a suspect than be seen at a love picture. I respected that. "
+			.. "Jenkins was clean."},
+	["aaf_props:peanut_shells#12"] = {label = "Look at the shells", fact = "shells",
+		before = "Peanut shells. Jenkins is a slob. Not a crime."},
+	["aaf_props:wastebasket#12"] = {label = "Look in the wastebasket", line = "Wrappers and a racing form. Jenkins lost."},
+	["aaf_props:desk_l#13"] = {label = "Search the empty desk", line = "Nobody's desk. Miller's memos pile up on it like snow."},
+	-- Chief's office
+	["aaf_props:display_case_top#30"] = {label = "Look at the display case", fact = "display_case"},
+	["aaf_props:certificate_blue#30"] = {label = "Read the certificate", fact = "certificate", doc = true},
+	["aaf_props:certificate#30"] = {label = "Read the certificate",
+		line = "Ten years of service. The Chief framed it himself."},
+	["aaf_props:photo_acorn#30"] = {label = "Look at the photo", line = "The Chief and the ACORN. He's smiling. The ACORN isn't."},
+	["aaf_props:window_sill_prints#30"] = {label = "Look at the window", fact = "sill_prints",
+		before = "Open a crack. Rain on the sill, the elm right outside. Nice view, if you like trees.",
+		later = {when = "window", line = "The elm. Close enough to jump, for something small."}},
+	["aaf_props:door_scratches#30"] = {label = "Look at the gap under the door", fact = "scratches",
+		before = "A draft. The Chief's complained about it for years."},
+	["aaf_props:lamp_papers#30"] = {label = "Read the letter", fact = "letter", doc = true},
+	["aaf_props:phone#30"] = {label = "Look at the phone", line = "The Chief's phone. He's on the other end of a different one."},
+	["aaf_props:cabinet_top_open#30"] = {label = "Look in the drawer", fact = "insurance", doc = true},
+	["aaf_props:wastebasket#30"] = {label = "Look in the wastebasket", fact = "crumpled_note", doc = true},
+	["aaf_props:safe#30"] = {label = "Try the safe", fact = "safe",
+		later = {when = "dinner_program", line = "Still locked. Still none of my business."}},
+	["aaf_props:desk_l_papers#30"] = {label = "Search the Chief's drawer", fact = "dinner_program", doc = true,
+		locked = "The Chief's private drawer. Locked.",
+		cleared = "Forty-seven minutes. The ovation was probably people standing up to leave. The Chief was clean. "
+			.. "Long-winded, but clean."},
+	["aaf_props:radio#30"] = {label = "Turn on the radio", line = "The late news. The late news didn't know about this yet."},
+	-- Kitchen (its door only opens once Fred is accused)
+	["aaf_props:notice#20"] = {label = "Read the note", fact = "door_note", doc = true,
+		cleared = "Four and a half hours in a kitchen with a cold percolator and a view of a door. Fred had the best "
+			.. "alibi in the building and the worst evening. Fred was clean."},
+}
+for i = 1, 9 do
+	THINGS["aaf_props:crate_large#" .. i] = {label = "Look in the crate",
+		line = "Storage of old case notes, nothing interesting here."}
+end
+
+local function use(player, thing)
+	if thing.line then
+		say(player, thing.line)
+		return
+	end
+	local id = thing.fact
+	local fact = facts[id]
+	local known = aaf_station_story.knows(player, id)
+	if thing.locked and not known and not aaf_station_story.is_accused(player, fact.alibi) then
+		say(player, thing.locked)
+		return
+	end
+	if fact.gate and not known and not holds(player, fact.gate) then
+		aaf_flags.set(player, SEEN_PREFIX .. id, true)
+		say(player, thing.before)
+		return
+	end
+	if known and thing.later and holds(player, thing.later.when) then
+		say(player, thing.later.line)
+		return
+	end
+	local cleared = not known and thing.cleared
+	if thing.doc then
+		note(player, "[" .. fact.title .. "] " .. fact.line)
+		if cleared then
+			say(player, cleared)
+		end
+	else
+		-- One thought at a time, so the alibi's verdict joins the line
+		say(player, cleared and fact.line .. " " .. cleared or fact.line)
+	end
+	aaf_station_story.learn(player, id)
+end
+
+for key, thing in pairs(THINGS) do
+	local fact = thing.fact and facts[thing.fact]
+	assert(thing.line or fact, "aaf_station_story: thing " .. key .. " has neither a line nor a known fact")
+	assert(not fact or not fact.gate or thing.before, "aaf_station_story: gated thing " .. key .. " needs a before line")
+	assert(not thing.locked or fact.alibi, "aaf_station_story: locked thing " .. key .. " is not an alibi")
+	aaf_places.register_thing(PLACE, key, {
+		label = thing.label,
+		on_interact = function(player)
+			use(player, thing)
+		end,
+	})
+end

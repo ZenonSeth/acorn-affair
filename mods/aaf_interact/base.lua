@@ -5,8 +5,6 @@ local DEFAULT_RADIUS = 1.5
 -- How far above or below the detective's feet a "radius" thing may be
 local VERTICAL_REACH = 1.5
 local KEY_PREFIX = "[E] "
--- Shown while a low thing is in reach but the detective is standing
-local LOW_HINT = "[Sneak] Look closer"
 local GROUP = "aaf_interact"
 local TEXT_SCALE = aaf_utils.constants.hud_text_scale
 
@@ -122,19 +120,17 @@ local function better(a, b)
 	return a.distance < b.distance
 end
 
--- The thing the detective would use now ({target, handler, def, ...} or nil), and whether a low thing
--- is in reach that only crouching would reveal
+-- The thing the detective would use now ({target, handler, def, ...} or nil); low things only while crouched
 function aaf_interact.find_target(player)
 	local feet = aaf_avatar.get_pos(player)
 	if not feet then
-		return nil, false
+		return nil
 	end
 	-- The cell the detective stands in; feet sit on the floor's top face, so nudge them up into it
 	local cell = vector.round(vector.offset(feet, 0, 0.1, 0))
 	local crouching = aaf_avatar.is_crouching(player)
 	local facing = aaf_avatar.get_facing(player)
 	local best
-	local low_hidden = false
 
 	local function consider(target, def, pos)
 		local handler = resolve(def._aaf_interact)
@@ -152,7 +148,6 @@ function aaf_interact.find_target(player)
 			low = handler.low or false
 		end
 		if low and not crouching then
-			low_hidden = true
 			return
 		end
 		local candidate = {
@@ -180,7 +175,7 @@ function aaf_interact.find_target(player)
 			consider({type = "object", object = obj, entity = entity}, entity, obj:get_pos())
 		end
 	end
-	return best, low_hidden
+	return best
 end
 
 local function label_of(player, found)
@@ -192,29 +187,19 @@ local function label_of(player, found)
 	return name and (label .. " " .. name) or label
 end
 
--- player name -> {hud, hint_hud = ids, text = shown prompt, hint = hint shown, aux1 = key held last step}
+-- player name -> {hud = id, text = shown prompt, aux1 = key held last step}
 local states = {}
 
 core.register_on_joinplayer(function(player)
 	states[player:get_player_name()] = {
 		text = "",
-		hint = false,
 		hud = player:hud_add({
 			type = "text",
 			position = {x = 0.5, y = 0.85},
 			alignment = {x = 0, y = 0},
 			number = 0xFFFFFF,
-			size = {x = 1.5 * TEXT_SCALE, y = 0},
+			size = {x = 1.4 * TEXT_SCALE, y = 0},
 			style = 1,
-			text = "",
-		}),
-		hint_hud = player:hud_add({
-			type = "text",
-			position = {x = 0.5, y = 0.85},
-			offset = {x = 0, y = 40},
-			alignment = {x = 0, y = 0},
-			number = 0x9A9A9A,
-			size = {x = TEXT_SCALE, y = 0},
 			text = "",
 		}),
 	}
@@ -224,15 +209,11 @@ core.register_on_leaveplayer(function(player)
 	states[player:get_player_name()] = nil
 end)
 
-local function show_prompt(player, state, found, low_hidden)
+local function show_prompt(player, state, found)
 	local text = found and (KEY_PREFIX .. label_of(player, found)) or ""
 	if text ~= state.text then
 		state.text = text
 		player:hud_change(state.hud, "text", text)
-	end
-	if low_hidden ~= state.hint then
-		state.hint = low_hidden
-		player:hud_change(state.hint_hud, "text", low_hidden and LOW_HINT or "")
 	end
 end
 
@@ -249,14 +230,16 @@ core.register_globalstep(function(dtime)
 			local aux1 = player:get_player_control().aux1
 			local pressed = aux1 and not state.aux1
 			state.aux1 = aux1
-			if scan or pressed then
-				local found, low_hidden = aaf_interact.find_target(player)
+			if aaf_avatar.is_frozen(player) then
+				show_prompt(player, state, nil)
+			elseif scan or pressed then
+				local found = aaf_interact.find_target(player)
 				if pressed and found then
 					found.handler.on_interact(player, found.target)
 					-- Using a thing may change or remove it
-					found, low_hidden = aaf_interact.find_target(player)
+					found = aaf_interact.find_target(player)
 				end
-				show_prompt(player, state, found, low_hidden)
+				show_prompt(player, state, found)
 			end
 		end
 	end

@@ -2,13 +2,13 @@ local CAN_LEAVE = "station:can_leave"
 
 local LOCKED_LINE = "Not until this is solved."
 local RESTROOM_LINE = "Some mysteries a man leaves alone."
-local KITCHEN_UNSTUCK = "station:kitchen_unstuck"
 local KITCHEN_STUCK_LINE = "Stuck. Somebody should fix this door. Somebody won't."
-local LEAVE_LINE = "Back to the office. The cab driver remembered me. Neither of us was happy about it."
+local LEAVE_LINES = {"Back to the office. The cab driver remembered me. Neither of us was happy about it."}
+local ARRIVED = "station:arrived"
 
--- Until the dialog system exists, the detective's lines go to chat
+-- The detective's own lines
 local function say(player, text)
-	core.chat_send_player(player:get_player_name(), text)
+	aaf_dialog.think(player, text)
 end
 
 aaf_interact.register("aaf_station_story:door", {
@@ -20,8 +20,7 @@ aaf_interact.register("aaf_station_story:door", {
 			say(player, LOCKED_LINE)
 			return
 		end
-		say(player, LEAVE_LINE)
-		aaf_places.move(player, "office")
+		aaf_places.travel(player, "office", LEAVE_LINES)
 	end,
 })
 
@@ -46,9 +45,18 @@ aaf_interact.register("aaf_station_story:sink", {
 	end,
 })
 
--- Stuck until the chief's tip about Fred sets the flag
+-- Stuck until the chief's tip about Fred
 aaf_doors.set_rule("kitchen", function(player)
-	return aaf_flags.get(player, KITCHEN_UNSTUCK) and true or KITCHEN_STUCK_LINE
+	return aaf_station_story.is_accused(player, "fred") or KITCHEN_STUCK_LINE
+end)
+
+-- The case's tasks, on the first arrival
+aaf_places.register_on_arrive("station", function(player)
+	if not aaf_flags.get(player, ARRIVED) then
+		aaf_flags.set(player, ARRIVED, true)
+		aaf_tasks.add(player, "station:case", "Find out who took the ACORN")
+		aaf_tasks.add(player, "station:report", "Report to the Chief (front desk phone)")
+	end
 end)
 
 -- Temporary: the case being solved will set it

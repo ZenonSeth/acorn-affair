@@ -118,7 +118,7 @@ core.register_on_joinplayer(function(player)
 			offset = {x = -24, y = 0},
 			alignment = {x = -1, y = 1},
 			number = 0xFFFFFF,
-			size = {x = aaf_utils.constants.hud_text_scale, y = 0},
+			size = {x = 1.2 * aaf_utils.constants.hud_text_scale, y = 0},
 			text = "",
 		}),
 	}
