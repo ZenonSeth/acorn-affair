@@ -30,8 +30,8 @@ return {
 	license = "LGPL-3.0-only",
 	media_license = "CC-BY-SA-3.0",
 	long_description = readtext("README.md"),
-	repo = "https://github.com/ZenonSeth/acorn_affair",
-	issue_tracker = "https://github.com/ZenonSeth/acorn_affair/issues",
+	repo = "https://github.com/ZenonSeth/acorn-affair",
+	issue_tracker = "https://github.com/ZenonSeth/acorn-affair/issues",
 	maintainers = {"ZenonSeth"},
 	screenshots = screenshots
 }
