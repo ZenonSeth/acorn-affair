@@ -1,8 +1,10 @@
 local PLACE = "office"
 local INTRO_SEEN = "office:intro_seen"
+local PHONE_RANG = "office:phone_rang"
 local CALL_DONE = "office:call_done"
 local CAN_LEAVE = "office:can_leave"
 local SEARCHED_PREFIX = "office:searched_"
+local KEYS_HINTED = "office:keys_hinted"
 
 local TASK_ANSWER = "office:answer"
 local TASK_KEYS = "office:keys"
@@ -13,18 +15,27 @@ local HINT_SPOTS = 2
 local HINT_SECONDS = 30
 -- Lets the client finish joining before the first card shows
 local INTRO_DELAY = 1
+-- The detective walks around the office this long after the intro before the phone rings
+local RING_DELAY = 20
+-- The ring sound's loop length; sparkle bursts at these offsets match its bell
+local RING_CYCLE = 3
+local RING_BURSTS = {0, 0.5, 1}
+local RING_SLOT = "phone"
+local RING_TEXTURE = "aaf_office_story_ring.png"
+local RING_LIFE = 0.4
+local PHONE_SEARCH = 16
 
 local INTRO_LINES = {
 	"Another quiet night in this miserable city. The rain came down like it had a grudge.",
-	"Then the phone rang. It always does.",
+	"Another night waiting for the phone to ring. It always does, eventually.",
 }
 local LOCKED_LINE = "Locked. I locked it myself. Of course I did."
 local LEAVE_LINES = {
 	"The cab smelled of wet dog and broken dreams. "
 		.. "Twenty minutes later I was standing in the police station. Nobody was home.",
 }
+local KEYS_NOTE = "Maybe I should check low and look under things?"
 local KEYS_LINE = "Under the desk. Things always end up under the desk. So do I, some nights."
-local DEAD_PHONE_LINE = "The line's dead. Like most of my leads."
 local CHIEF = "Chief Harrington"
 
 -- The detective's own lines
@@ -32,12 +43,114 @@ local function say(player, text)
 	aaf_dialog.think(player, text)
 end
 
+-- The Sneak hint on the task, and its line on the notebook's note
+local function show_keys_hint(player)
+	aaf_tasks.set_hint(player, TASK_KEYS, KEYS_HINT)
+	if not aaf_flags.get(player, KEYS_HINTED) then
+		aaf_flags.set(player, KEYS_HINTED, true)
+		aaf_notebook.refresh(player)
+	end
+end
+
 local function start_hint_timer(player)
 	local name = player:get_player_name()
 	core.after(HINT_SECONDS, function()
 		local p = core.get_player_by_name(name)
 		if p and aaf_tasks.has(p, TASK_KEYS) then
-			aaf_tasks.set_hint(p, TASK_KEYS, KEYS_HINT)
+			show_keys_hint(p)
+		end
+	end)
+end
+
+-- The key hunt's case note: the notebook's only page from the call until the keys are found
+local function keys_note_visible(player)
+	return aaf_flags.get(player, CALL_DONE) ~= nil and not aaf_flags.get(player, CAN_LEAVE)
+end
+
+aaf_notebook.register_tab({id = "office", title = "Notes", visible = keys_note_visible, build = function(player)
+	local page = aaf_notebook.PAGE
+	local text = "<style size=22>Find my keys</style>"
+	if aaf_flags.get(player, KEYS_HINTED) then
+		text = text .. "\n<mono>" .. aaf_gui.escape(KEYS_NOTE) .. "</mono>"
+	end
+	return ("hypertext[%g,%g;%g,%g;office_note;<global size=18 color=%s>%s]"):format(
+		page.x + 0.4, page.y + 0.4, page.w - 0.8, page.h - 0.8, aaf_gui.theme.ink, text)
+end})
+
+-- player name -> the token of the running ring loop
+local ringing = {}
+
+local function find_phone(player)
+	local centre = vector.round(aaf_avatar.get_pos(player) or player:get_pos())
+	local reach = vector.new(PHONE_SEARCH, PHONE_SEARCH, PHONE_SEARCH)
+	for _, pos in ipairs(core.find_nodes_in_area(centre - reach, centre + reach, "aaf_props:phone_mug")) do
+		if aaf_places.thing_id(player, core.get_node(pos)) == PLACE .. "/aaf_props:phone_mug#1" then
+			return pos
+		end
+	end
+end
+
+-- A burst of particles over the phone, outward in every upward direction
+local function ring_pulse(name, pos)
+	for _ = 1, 14 do
+		local yaw = math.random() * 2 * math.pi
+		local up = math.asin(math.random())
+		local dir = vector.new(math.cos(yaw) * math.cos(up), math.sin(up), math.sin(yaw) * math.cos(up))
+		core.add_particle({
+			playername = name,
+			pos = pos + dir * 0.15,
+			velocity = dir * 1.8,
+			acceleration = dir * -2,
+			expirationtime = RING_LIFE,
+			size = 1,
+			texture = RING_TEXTURE,
+			-- length = -1 hangs the client for single particles (only spawners resolve it)
+			animation = {type = "vertical_frames", aspect_w = 9, aspect_h = 9, length = RING_LIFE + 0.05},
+			glow = 14,
+		})
+	end
+end
+
+local function start_ringing(player)
+	local name = player:get_player_name()
+	aaf_flags.set(player, PHONE_RANG, true)
+	aaf_tasks.add(player, TASK_ANSWER, "Answer the phone")
+	aaf_audio.sfx.start_loop(player, RING_SLOT, "phone_ring")
+	local phone = find_phone(player)
+	if not phone then
+		return
+	end
+	local pos = phone + vector.new(0, 0.1, 0)
+	local token = {}
+	ringing[name] = token
+	local function burst()
+		if ringing[name] == token then
+			ring_pulse(name, pos)
+		end
+	end
+	local function cycle()
+		if ringing[name] ~= token or not core.get_player_by_name(name) then
+			return
+		end
+		for _, offset in ipairs(RING_BURSTS) do
+			core.after(offset, burst)
+		end
+		core.after(RING_CYCLE, cycle)
+	end
+	cycle()
+end
+
+local function stop_ringing(player)
+	ringing[player:get_player_name()] = nil
+	aaf_audio.sfx.stop_loop(player, RING_SLOT)
+end
+
+local function start_ring_timer(player)
+	local name = player:get_player_name()
+	core.after(RING_DELAY, function()
+		local p = core.get_player_by_name(name)
+		if p and not aaf_flags.get(p, PHONE_RANG) then
+			start_ringing(p)
 		end
 	end)
 end
@@ -47,6 +160,9 @@ local function hang_up(player)
 	aaf_tasks.complete(player, TASK_ANSWER)
 	aaf_tasks.add(player, TASK_KEYS, "Find your keys")
 	start_hint_timer(player)
+	aaf_places.play_music(player)
+	aaf_notebook.refresh(player)
+	aaf_notebook.notify(player, {"Note added: Find my keys"})
 end
 
 -- The opening call (GDD 7.1): the chief's line and the detective's one reply, three times
@@ -77,17 +193,31 @@ local function call_step(player, i)
 end
 
 aaf_places.register_thing(PLACE, "aaf_props:phone_mug#1", {
-	label = function(player)
-		return aaf_flags.get(player, CALL_DONE) and "Look at the phone" or "Answer the phone"
+	label = "Answer the phone",
+	can_interact = function(player)
+		return aaf_flags.get(player, PHONE_RANG) ~= nil and not aaf_flags.get(player, CALL_DONE)
 	end,
 	on_interact = function(player)
-		if aaf_flags.get(player, CALL_DONE) then
-			say(player, DEAD_PHONE_LINE)
-		else
-			call_step(player, 1)
-		end
+		stop_ringing(player)
+		aaf_audio.music.play(player, "call")
+		call_step(player, 1)
 	end,
 })
+
+-- Things to look at while waiting for the call (and after it)
+local LOOKS = {
+	["aaf_props:certificate#1"] = {label = "Look at the certificate",
+		line = "Commendation from the city. For finding the mayor's cat. The cat never thanked me either."},
+	["aaf_props:board_l#1"] = {label = "Look at the clippings",
+		line = "Clippings from my old cases. Every headline spells my name wrong."},
+	["aaf_props:board_r#1"] = {label = "Look at the clippings",
+		line = "\"Local Detective Finds Dog.\" Front page. It was a slow week. They're all slow weeks."},
+}
+for key, look in pairs(LOOKS) do
+	aaf_places.register_thing(PLACE, key, {label = look.label, on_interact = function(player)
+		say(player, look.line)
+	end})
+end
 
 -- Dead ends of the key hunt: spot id -> {keys, label, line, after (once the keys are found; none = inert)}
 local SPOTS = {
@@ -133,7 +263,7 @@ for id, spot in pairs(SPOTS) do
 				if aaf_tasks.has(player, TASK_KEYS) then
 					aaf_flags.set(player, SEARCHED_PREFIX .. id, true)
 					if searched_count(player) >= HINT_SPOTS then
-						aaf_tasks.set_hint(player, TASK_KEYS, KEYS_HINT)
+						show_keys_hint(player)
 					end
 				end
 			end,
@@ -152,6 +282,7 @@ aaf_places.register_thing(PLACE, "aaf_props:desk_r_keys#1", {
 		aaf_flags.set(player, CAN_LEAVE, true)
 		aaf_tasks.complete(player, TASK_KEYS)
 		aaf_tasks.add(player, TASK_LEAVE, "Leave the office")
+		aaf_notebook.refresh(player)
 		core.swap_node(target.pos, {name = "aaf_props:desk_r", param2 = target.node.param2})
 	end,
 })
@@ -177,7 +308,7 @@ aaf_interact.register("aaf_office_story:door", {
 local function start_intro(player)
 	aaf_dialog.narrate(player, INTRO_LINES, function(p)
 		aaf_flags.set(p, INTRO_SEEN, true)
-		aaf_tasks.add(p, TASK_ANSWER, "Answer the phone")
+		start_ring_timer(p)
 	end)
 end
 
@@ -190,8 +321,23 @@ core.register_on_joinplayer(function(player)
 				start_intro(p)
 			end
 		end)
+	elseif aaf_places.get(player) == PLACE and not aaf_flags.get(player, CALL_DONE) then
+		-- Timers do not survive a rejoin
+		if aaf_flags.get(player, PHONE_RANG) then
+			core.after(INTRO_DELAY, function()
+				local p = core.get_player_by_name(name)
+				if p then
+					start_ringing(p)
+				end
+			end)
+		else
+			start_ring_timer(player)
+		end
 	elseif aaf_tasks.has(player, TASK_KEYS) then
-		-- The timer does not survive a rejoin
 		start_hint_timer(player)
 	end
+end)
+
+core.register_on_leaveplayer(function(player)
+	ringing[player:get_player_name()] = nil
 end)

@@ -41,6 +41,13 @@ function aaf_places.register_on_arrive(name, fn)
 	table.insert(arrive_callbacks[name], fn)
 end
 
+local PLACE_MUSIC = {office = "office", station = "station"}
+
+-- Plays the music track of the detective's current place
+function aaf_places.play_music(player)
+	aaf_audio.music.play(player, PLACE_MUSIC[aaf_places.get(player)])
+end
+
 -- Puts the detective at the place's spawn and records it; false if the place or the detective is missing
 function aaf_places.move(player, name)
 	local place = places[name]
@@ -48,6 +55,7 @@ function aaf_places.move(player, name)
 		return false
 	end
 	player:get_meta():set_string(STORE_KEY, name == DEFAULT_PLACE and "" or name)
+	aaf_places.play_music(player)
 	for _, fn in ipairs(arrive_callbacks[name] or {}) do
 		fn(player)
 	end
@@ -140,6 +148,10 @@ core.register_globalstep(function(dtime)
 			end
 		end
 	end
+end)
+
+core.register_on_joinplayer(function(player)
+	aaf_places.play_music(player)
 end)
 
 core.register_on_leaveplayer(function(player)
