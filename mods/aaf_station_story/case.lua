@@ -289,10 +289,12 @@ end)
 
 -- Thing key -> {label, then one of: fact (+ doc: shown as a document; before: the line while the fact's gate
 -- does not hold; later = {when, line} once it does; locked: the line until its alibi suspect is accused;
--- cleared: narration when the alibi is read), or line (flavor only)}
+-- cleared: narration when the alibi is read; first: narration joined on the first read; task: completed on the
+-- first read), or line (flavor only)}
 local THINGS = {
 	-- Reception
-	["aaf_props:register#1"] = {label = "Read the register", fact = "register", doc = true},
+	["aaf_props:register#1"] = {label = "Read the register", fact = "register", doc = true,
+		first = "Under it, the Chief's keys.", task = "station:keys"},
 	["aaf_props:papers_mug#1"] = {label = "Read the papers", fact = "noise_complaint", doc = true},
 	["aaf_props:board_l_plain#2"] = {label = "Read the missing property notice", fact = "missing_notice", doc = true},
 	["aaf_props:board_r_plain#2"] = {label = "Read the window notice", fact = "window_notice", doc = true},
@@ -378,12 +380,15 @@ local function use(player, thing)
 		say(player, thing.later.line)
 		return
 	end
-	local cleared = not known and thing.cleared
+	local extra = not known and (thing.cleared or thing.first)
 	-- Documents read as "Title: line" until the document panel exists
 	local line = thing.doc and fact.title .. ": " .. fact.line or fact.line
 	-- One thought at a time, so the alibi's verdict joins the line
-	say(player, cleared and line .. " " .. cleared or line)
+	say(player, extra and line .. " " .. extra or line)
 	aaf_station_story.learn(player, id)
+	if thing.task then
+		aaf_tasks.complete(player, thing.task)
+	end
 end
 
 for key, thing in pairs(THINGS) do

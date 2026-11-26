@@ -111,6 +111,9 @@ end
 local function finish(player, pname, trip)
 	player:hud_remove(trip.hud)
 	aaf_avatar.set_frozen(player, TRAVEL_FREEZE, false)
+	if trip.arrived then
+		aaf_audio.sfx.play("door_close", {player = player})
+	end
 	trips[pname] = nil
 end
 

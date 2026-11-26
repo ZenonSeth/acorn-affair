@@ -1,7 +1,8 @@
--- Light effects: each lamp near the player gets non-saved entities (a halo sprite, beam cards turned to face the camera)
+-- Light effects: each lamp near the player gets non-saved halo and beam entities.
 
 local BEAM_TEXTURE = "aaf_glow_beam.png"
 local HALO_TEXTURE = "aaf_glow_halo.png"
+local WALL_BEAM_MESH = "aaf_glow_wall_beam.obj"
 -- yaw change (radians) before a beam card is turned again
 local YAW_STEP = 0.03
 
@@ -10,7 +11,9 @@ local LIGHTS = {
 	wall = {
 		halo = {offset = vector.new(0, 0.36, 0.125), size = 1.2},
 		beams = {
-			{base = vector.new(0, 0.44, 0.125), dir = 1, width = 0.9, height = 1.1},
+			-- The sconce faces -Z at param2 0; nudge the glow just in front of it.
+			-- `origin` is where the mesh's origin goes (the OBJ is offset to match): straight behind the halo, so it always draws first
+			{base = vector.new(0, 0.44, 0.49), origin = vector.new(0, 0.36, 0.49), dir = 1, width = 0.9, height = 1.1},
 		},
 	},
 	floor = {
@@ -115,10 +118,11 @@ local COMMON = {
 	backface_culling = false,
 }
 
-local function entity(visual, on_step)
+local function entity(visual, on_step, mesh)
 	local props = table.copy(COMMON)
 	props.visual = visual
 	props.textures = visual == "sprite" and {HALO_TEXTURE} or {BEAM_TEXTURE, BEAM_TEXTURE}
+	props.mesh = mesh
 	return {
 		initial_properties = props,
 		on_step = function(self)
@@ -135,6 +139,7 @@ end
 
 core.register_entity("aaf_glow:halo", entity("sprite"))
 core.register_entity("aaf_glow:beam", entity("upright_sprite", face_camera))
+core.register_entity("aaf_glow:wall_beam", entity("mesh", nil, WALL_BEAM_MESH))
 
 local function add(name, pos, lamp_pos, light, init)
 	local obj = core.add_entity(pos, name)
@@ -184,9 +189,19 @@ function aaf_glow.spawn(pos)
 			{_size = {x = h.size, y = h.size}})
 	end
 	for _, b in ipairs(light.beams or {}) do
-		local centre = vector.add(rotate(b.base, node.param2, ptype), vector.new(0, b.dir * b.height / 2, 0))
-		objs[#objs + 1] = add("aaf_glow:beam", vector.add(pos, centre), lamp, entry[1],
+		local centre = b.origin and rotate(b.origin, node.param2, ptype)
+			or vector.add(rotate(b.base, node.param2, ptype), vector.new(0, b.dir * b.height / 2, 0))
+		local beam_name = entry[1] == "wall" and "aaf_glow:wall_beam" or "aaf_glow:beam"
+		local beam = add(beam_name, vector.add(pos, centre), lamp, entry[1],
 			{_beam = true, _flip = b.dir < 0, _size = {x = b.width, y = b.height}})
+		if beam then
+			if entry[1] == "wall" then
+				beam:set_yaw((node.param2 % 4) * math.pi / 2)
+			else
+				beam:set_yaw(view_yaw or 0)
+			end
+			objs[#objs + 1] = beam
+		end
 	end
 	active[key] = objs
 end

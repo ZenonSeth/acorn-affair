@@ -17,10 +17,12 @@ local hint_source
 -- player name -> selected tab id
 local selected = {}
 
--- def: id, title, build(player) -> formspec on the page, optional visible(player) and
+-- def: id, title, icon (optional texture for a square icon tab), icon_dark (optional hover/selected texture),
+-- build(player) -> formspec on the page, default (opened until another tab is picked), optional visible(player) and
 -- on_fields(player, fields) -> true when handled (then the notebook is rebuilt)
 function aaf_notebook.register_tab(def)
-	assert(def.id and def.title and def.build, "aaf_notebook: a tab needs an id, a title and a build function")
+	assert(def.id and (def.title or def.icon) and def.build,
+		"aaf_notebook: a tab needs an id, a title or icon and a build function")
 	tabs[#tabs + 1] = def
 end
 
@@ -41,12 +43,16 @@ end
 
 local function current_tab(player, list)
 	local id = selected[player:get_player_name()]
+	local fallback
 	for _, def in ipairs(list) do
 		if def.id == id then
 			return def
 		end
+		if def.default and not fallback then
+			fallback = def
+		end
 	end
-	return list[1]
+	return fallback or list[1]
 end
 
 -- Build mode keeps the plain inventory, so items from /giveme can be moved
@@ -58,6 +64,10 @@ local function build_mode_form()
 	})
 end
 
+local function tab_width(def)
+	return def.icon and TAB_H or TAB_W
+end
+
 local function build(player)
 	if aaf_avatar.is_building(player) then
 		return build_mode_form()
@@ -65,14 +75,33 @@ local function build(player)
 	local list = visible_tabs(player)
 	local tab = current_tab(player, list)
 	local fs = {aaf_gui.window(WIDTH, HEIGHT, "Case Notebook")}
-	local x = WIDTH - 0.5 - #list * TAB_W - (#list - 1) * TAB_GAP
+	local total_w = math.max(0, (#list - 1) * TAB_GAP)
+	for _, def in ipairs(list) do
+		total_w = total_w + tab_width(def)
+	end
+	local x = WIDTH - 0.5 - total_w
 	for _, def in ipairs(list) do
 		local name = TAB_PREFIX .. def.id
-		if def == tab then
-			fs[#fs + 1] = ("style[%s;bgimg=aaf_gui_button_pressed.png;textcolor=%s]"):format(name, theme.ink)
+		local w = tab_width(def)
+		if def.icon then
+			local icon_dark = def.icon_dark or def.icon
+			if def == tab then
+				fs[#fs + 1] = ("style[%s;bgimg=aaf_gui_button_pressed.png;fgimg=%s]"):format(name, icon_dark)
+			else
+				fs[#fs + 1] = ("style[%s;fgimg=%s]style[%s:hovered,%s:pressed;fgimg=%s]"):format(
+					name, def.icon, name, name, icon_dark)
+			end
+			fs[#fs + 1] = ("image_button[%g,0.35;%g,%g;;%s;;false;false]"):format(x, w, TAB_H, name)
+			if def.title then
+				fs[#fs + 1] = ("tooltip[%s;%s]"):format(name, core.formspec_escape(def.title))
+			end
+		else
+			if def == tab then
+				fs[#fs + 1] = ("style[%s;bgimg=aaf_gui_button_pressed.png;textcolor=%s]"):format(name, theme.ink)
+			end
+			fs[#fs + 1] = ("button[%g,0.35;%g,%g;%s;%s]"):format(x, w, TAB_H, name, core.formspec_escape(def.title))
 		end
-		fs[#fs + 1] = ("button[%g,0.35;%g,%g;%s;%s]"):format(x, TAB_W, TAB_H, name, core.formspec_escape(def.title))
-		x = x + TAB_W + TAB_GAP
+		x = x + w + TAB_GAP
 	end
 	fs[#fs + 1] = aaf_gui.paper(PAGE.x, PAGE.y, PAGE.w, PAGE.h)
 	if tab then

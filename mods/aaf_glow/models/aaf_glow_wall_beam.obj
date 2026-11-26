@@ -1,0 +1,14 @@
+# Mesh entities use 10 model units per node. A plain quad; the beam's shape comes from the texture.
+# Origin sits 0.08 nodes below the beam (0.727 units at height 1.1), at the halo's height, so it sorts behind the halo.
+o wall_beam
+v -5 0.727 0
+v 5 0.727 0
+v 5 10.727 0
+v -5 10.727 0
+vt 0 0
+vt 1 0
+vt 1 1
+vt 0 1
+vn 0 0 1
+usemtl glow
+f 1/1/1 2/2/1 3/3/1 4/4/1

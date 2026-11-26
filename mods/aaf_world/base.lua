@@ -27,6 +27,7 @@ core.register_node("aaf_world:floor_tile", {
 	tiles = {world_tile("aaf_world_floor_tile.png"), fill("#1c1a18"), fill("#1c1a18")},
 	is_ground_content = false,
 	groups = {cracky = 1},
+	_aaf_footstep = "concrete",
 })
 
 -- Rugs repeat every 2x2 nodes, aligned to even world coordinates; the _x / _z / _xz variants start on odd x / z / both
@@ -181,6 +182,7 @@ core.register_node("aaf_world:sidewalk", {
 	tiles = {world_tile("aaf_world_sidewalk.png"), GROUND_SIDE, GROUND_SIDE},
 	is_ground_content = false,
 	groups = {cracky = 1},
+	_aaf_footstep = "concrete",
 })
 
 core.register_node("aaf_world:road", {
@@ -188,6 +190,7 @@ core.register_node("aaf_world:road", {
 	tiles = {world_tile("aaf_world_road.png"), GROUND_SIDE, GROUND_SIDE},
 	is_ground_content = false,
 	groups = {cracky = 1},
+	_aaf_footstep = "concrete",
 })
 
 core.register_node("aaf_world:tree_pit", {

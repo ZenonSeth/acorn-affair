@@ -26,9 +26,9 @@ local theme = {
 
 -- Sent as the player's formspec prepend, so every formspec including the pause menu gets it
 theme.prepend = table.concat({
-	"style_type[button,button_exit;border=false;bgimg=aaf_gui_button.png;bgimg_middle=14;padding=-12;textcolor=" .. TEXT .. "]",
-	"style_type[button:hovered,button_exit:hovered;bgimg=aaf_gui_button_hover.png;textcolor=" .. INK .. "]",
-	"style_type[button:pressed,button_exit:pressed;bgimg=aaf_gui_button_pressed.png;textcolor=" .. INK .. "]",
+	"style_type[button,button_exit,image_button;border=false;bgimg=aaf_gui_button.png;bgimg_middle=14;padding=-12;textcolor=" .. TEXT .. "]",
+	"style_type[button:hovered,button_exit:hovered,image_button:hovered;bgimg=aaf_gui_button_hover.png;textcolor=" .. INK .. "]",
+	"style_type[button:pressed,button_exit:pressed,image_button:pressed;bgimg=aaf_gui_button_pressed.png;textcolor=" .. INK .. "]",
 	"style_type[*;font_size=*" .. FONT_SCALE .. "]",
 	"style_type[label,field,pwdfield,textarea,checkbox,tabheader;textcolor=" .. TEXT .. "]",
 	-- No engine background on text inputs: draw aaf_gui.input_bg() behind them instead

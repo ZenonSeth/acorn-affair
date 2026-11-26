@@ -7,6 +7,10 @@ local function clamp01(v)
 	return math.max(0, math.min(1, v))
 end
 
+local function default_player_volume(category)
+	return category == "music" and 0.4 or 1
+end
+
 -- Global setting, overridable per player through meta; categories are "music" and "sfx"
 local function enabled(player, category)
 	if not core.settings:get_bool("aaf_audio_" .. category .. "_enabled", true) then
@@ -18,7 +22,10 @@ end
 
 local function volume(player, category)
 	local base = tonumber(core.settings:get("aaf_audio_" .. category .. "_volume")) or 1
-	local v = tonumber(player:get_meta():get_string(META_PREFIX .. category .. "_volume")) or 1
+	local v = tonumber(player:get_meta():get_string(META_PREFIX .. category .. "_volume"))
+	if v == nil then
+		v = default_player_volume(category)
+	end
 	return clamp01(base) * clamp01(v)
 end
 
@@ -291,7 +298,8 @@ aaf_audio.categories = {
 
 -- The player's own volume (0 to 1), without the server-wide setting that get_volume folds in
 function aaf_audio.get_player_volume(player, category)
-	return clamp01(tonumber(player:get_meta():get_string(META_PREFIX .. category .. "_volume")) or 1)
+	local value = tonumber(player:get_meta():get_string(META_PREFIX .. category .. "_volume"))
+	return clamp01(value == nil and default_player_volume(category) or value)
 end
 
 core.register_on_leaveplayer(function(player)
@@ -306,3 +314,7 @@ music.register_track("call", {sound = "aaf_audio_music_covert_affair"})
 
 sfx.register("rain", {sound = "aaf_audio_rain", category = "ambience", gain = 0.2})
 sfx.register("phone_ring", {sound = "aaf_audio_phone_ring", gain = 0.5})
+sfx.register("door_close", {sound = "aaf_audio_door_close", max_hear_distance = 16})
+sfx.register("door_open", {sound = "aaf_audio_door_open", max_hear_distance = 16})
+sfx.register("footstep_wood", {sound = "aaf_audio_footstep_wood", gain = 0.9})
+sfx.register("footstep_concrete", {sound = "aaf_audio_footstep_concrete", gain = 0.9})

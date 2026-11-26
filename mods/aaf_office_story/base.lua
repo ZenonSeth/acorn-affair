@@ -62,16 +62,19 @@ local function start_hint_timer(player)
 	end)
 end
 
--- The key hunt's case note: the notebook's only page from the call until the keys are found
-local function keys_note_visible(player)
-	return aaf_flags.get(player, CALL_DONE) ~= nil and not aaf_flags.get(player, CAN_LEAVE)
+-- The intro's notebook page, until the keys are found; the key hunt's note is written from the call
+local function in_intro(player)
+	return not aaf_flags.get(player, CAN_LEAVE)
 end
 
-aaf_notebook.register_tab({id = "office", title = "Notes", visible = keys_note_visible, build = function(player)
+aaf_notebook.register_tab({id = "office", title = "Notes", default = true, visible = in_intro, build = function(player)
 	local page = aaf_notebook.PAGE
-	local text = "<style size=22>Find my keys</style>"
-	if aaf_flags.get(player, KEYS_HINTED) then
-		text = text .. "\n<mono>" .. aaf_gui.escape(KEYS_NOTE) .. "</mono>"
+	local text = "<mono>Nothing written down yet.</mono>"
+	if aaf_flags.get(player, CALL_DONE) then
+		text = "<style size=22>Find my keys</style>"
+		if aaf_flags.get(player, KEYS_HINTED) then
+			text = text .. "\n<mono>" .. aaf_gui.escape(KEYS_NOTE) .. "</mono>"
+		end
 	end
 	return ("hypertext[%g,%g;%g,%g;office_note;<global size=18 color=%s>%s]"):format(
 		page.x + 0.4, page.y + 0.4, page.w - 0.8, page.h - 0.8, aaf_gui.theme.ink, text)
@@ -171,9 +174,10 @@ local CALL = {
 		.. "from my office. Something irreplaceable.", reply = "Your wallet?"},
 	{text = "My ACORN. The Award for Outstanding Constabulary Recognition and Notability. Solid gold-plated. "
 		.. "It was on its stand at half past nine and gone by ten to midnight.", reply = "Anyone else in the building?"},
-	{text = "My own officers. One of them did it, I'd stake my pension on it. The front door's unlocked. Call me "
-		.. "from the front desk phone when you know who. I'll be by the phone. I won't be sleeping.",
-		reply = "I'm on my way, Chief."},
+	{text = "My own officers. One of them did it, I'd stake my pension on it. The front door's unlocked, and "
+		.. "my keys to the rest of the building are under the register on the front desk. Call me from the front "
+		.. "desk phone when you know who. I won't be sleeping.",
+		reply = "I'll come take a look. Don't rush to accusations."},
 }
 
 local function call_step(player, i)

@@ -59,6 +59,8 @@ aaf_interact.register("aaf_doors:door", {
 			end
 		end
 		set_open(target.pos, info.id, not info.open, target.node.param2)
+		-- The listener is the camera, about 8 nodes away, and positional gain falls off as 3 / distance
+		aaf_audio.sfx.play(info.open and "door_close" or "door_open", {pos = vector.offset(target.pos, 0, 1, 0), gain = 2.5})
 	end,
 })
 

@@ -127,7 +127,7 @@ local function suspects_tab(player)
 	return table.concat(fs)
 end
 
-aaf_notebook.register_tab({id = "clues", title = "Clues", visible = arrived, build = clues_tab})
+aaf_notebook.register_tab({id = "clues", title = "Clues", default = true, visible = arrived, build = clues_tab})
 aaf_notebook.register_tab({id = "suspects", title = "Suspects", visible = arrived, build = suspects_tab,
 	on_fields = function(player, fields)
 		for key in pairs(fields) do

@@ -2,6 +2,7 @@ local CAN_LEAVE = "station:can_leave"
 
 local LOCKED_LINE = "Not until this is solved."
 local RESTROOM_LINE = "Some mysteries are best left alone."
+local RECEPTION_LOCKED_LINE = "Locked. The Chief said his keys were under the register."
 local KITCHEN_STUCK_LINE = "Stuck. Somebody should fix this door. Somebody won't."
 local LEAVE_LINES = {"Back to the office. The cab driver remembered me. Neither of us was happy about it."}
 local ARRIVED = "station:arrived"
@@ -45,6 +46,11 @@ aaf_interact.register("aaf_station_story:sink", {
 	end,
 })
 
+-- Locked until the register is read (the keys are under it), so every suspect is listed before the clues
+aaf_doors.set_rule("reception", function(player)
+	return aaf_station_story.knows(player, "register") or RECEPTION_LOCKED_LINE
+end)
+
 -- Stuck until the chief's tip about Fred
 aaf_doors.set_rule("kitchen", function(player)
 	return aaf_station_story.is_accused(player, "fred") or KITCHEN_STUCK_LINE
@@ -54,6 +60,7 @@ end)
 aaf_places.register_on_arrive("station", function(player)
 	if not aaf_flags.get(player, ARRIVED) then
 		aaf_flags.set(player, ARRIVED, true)
+		aaf_tasks.add(player, "station:keys", "Get the Chief's keys (under the register)")
 		aaf_tasks.add(player, "station:case", "Find out who took the ACORN")
 		aaf_tasks.add(player, "station:report", "Report to the Chief (front desk phone)")
 		aaf_notebook.refresh(player)

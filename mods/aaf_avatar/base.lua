@@ -23,6 +23,11 @@ local HALF_HEIGHT = 0.95
 -- Placeholder cube height while crouched, as a fraction of standing height
 local CROUCH_SCALE = 0.7
 
+-- Nodes walked per footstep; the first one plays this soon after starting off
+local STRIDE = 1.7
+local FIRST_STEP = 0.2
+local CROUCH_STEP_GAIN = 0.5
+
 core.override_item("", {range = 0})
 
 -- Fills the hand slot in build mode; items without their own range use the hand's
@@ -133,7 +138,10 @@ local function start(player, pos)
 	if not avatar then
 		return
 	end
-	local session = {avatar = avatar, eye_height = player:get_properties().eye_height, last_pos = pos, crouching = false}
+	local session = {
+		avatar = avatar, eye_height = player:get_properties().eye_height, last_pos = pos, crouching = false,
+		step_left = FIRST_STEP,
+	}
 	local rig = core.add_entity(rig_target(player, session, pos), "aaf_avatar:rig")
 	if not rig then
 		avatar:remove()
@@ -290,6 +298,25 @@ local function move_avatar(player, session)
 	end
 end
 
+-- Steps by the distance actually walked, so pushing against a wall stays quiet
+local function play_footsteps(player, session, from, to)
+	local walked = math.sqrt((to.x - from.x) ^ 2 + (to.z - from.z) ^ 2)
+	if walked < 0.001 or walked > 1 or math.abs(to.y - from.y) > 0.01 then
+		session.step_left = FIRST_STEP
+		return
+	end
+	session.step_left = session.step_left - walked
+	if session.step_left > 0 then
+		return
+	end
+	session.step_left = session.step_left + STRIDE
+	local def = core.registered_nodes[core.get_node(vector.offset(to, 0, -HALF_HEIGHT - 0.2, 0)).name]
+	if def and def.walkable then
+		aaf_audio.sfx.play("footstep_" .. (def._aaf_footstep or "wood"),
+			{player = player, gain = session.crouching and CROUCH_STEP_GAIN or 1})
+	end
+end
+
 core.register_globalstep(function(dtime)
 	for name, session in pairs(sessions) do
 		local player = core.get_player_by_name(name)
@@ -303,6 +330,7 @@ core.register_globalstep(function(dtime)
 			remove_session(name)
 			start_when_loaded(player, last)
 		else
+			play_footsteps(player, session, session.last_pos, pos)
 			session.last_pos = pos
 			clamp_pitch(player)
 			move_avatar(player, session)
