@@ -22,19 +22,22 @@ function aaf_environment.apply(player)
 	player:override_day_night_ratio(NIGHT_LIGHT)
 	player:set_lighting(LIGHTING)
 	player:set_sky({
-		type = "regular",
-		clouds = false,
-		-- the raised night light blends in the day colours, so every phase is night
-		sky_color = {
-			day_sky = "#05070e", day_horizon = "#0a0d16",
-			dawn_sky = "#05070e", dawn_horizon = "#0a0d16",
-			night_sky = "#05070e", night_horizon = "#0a0d16",
+		type = "skybox",
+		textures = {
+			"aaf_sky_top.png",
+			"aaf_sky_bottom.png",
+			"aaf_sky_left.png",
+			"aaf_sky_right.png",
+			"aaf_sky_front.png",
+			"aaf_sky_back.png",
 		},
+		clouds = false,
+		base_color = "#06080e",
 		fog = {fog_color = "#06080e"},
 	})
 	player:set_sun({visible = false, sunrise_visible = false})
 	player:set_moon({visible = true})
-	player:set_stars({visible = true, count = 600})
+	player:set_stars({visible = false})
 end
 
 local constants = aaf_utils.constants

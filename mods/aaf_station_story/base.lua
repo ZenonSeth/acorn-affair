@@ -1,9 +1,11 @@
 local CAN_LEAVE = "station:can_leave"
+local HAS_LOCKPICKS = "station:has_lockpicks"
 
-local LOCKED_LINE = "Not until this is solved."
 local RESTROOM_LINE = "Some mysteries are best left alone."
 local RECEPTION_LOCKED_LINE = "Locked. The Chief said his keys were under the register."
 local KITCHEN_STUCK_LINE = "Stuck. Somebody should fix this door. Somebody won't."
+local KITCHEN_NEED_PICKS_LINE = "Still jammed. I'll need my lockpicking kit from the office safe."
+local MIDCASE_LEAVE_LINES = {"Back to the office. The cab driver didn't ask questions. I liked him for that."}
 local LEAVE_LINES = {"Back to the office. The cab driver remembered me. Neither of us was happy about it."}
 local ARRIVED = "station:arrived"
 
@@ -14,14 +16,13 @@ end
 
 aaf_interact.register("aaf_station_story:door", {
 	label = function(player)
-		return aaf_flags.get(player, CAN_LEAVE) and "Leave" or "Try the door"
+		return aaf_flags.get(player, CAN_LEAVE) and "Leave" or "Return to office"
 	end,
 	on_interact = function(player)
-		if not aaf_flags.get(player, CAN_LEAVE) then
-			say(player, LOCKED_LINE)
-			return
+		local solved = aaf_flags.get(player, CAN_LEAVE)
+		if aaf_places.travel(player, "office", solved and LEAVE_LINES or MIDCASE_LEAVE_LINES) and solved then
+			aaf_tasks.complete(player, "station:leave")
 		end
-		aaf_places.travel(player, "office", LEAVE_LINES)
 	end,
 })
 
@@ -51,9 +52,12 @@ aaf_doors.set_rule("reception", function(player)
 	return aaf_station_story.knows(player, "register") or RECEPTION_LOCKED_LINE
 end)
 
--- Stuck until the chief's tip about Fred
+-- Stuck until Fred is accused and the detective fetches the lockpicking kit
 aaf_doors.set_rule("kitchen", function(player)
-	return aaf_station_story.is_accused(player, "fred") or KITCHEN_STUCK_LINE
+	if not aaf_station_story.is_accused(player, "fred") then
+		return KITCHEN_STUCK_LINE
+	end
+	return aaf_flags.get(player, HAS_LOCKPICKS) ~= nil or KITCHEN_NEED_PICKS_LINE
 end)
 
 -- The case's tasks, on the first arrival
@@ -65,9 +69,4 @@ aaf_places.register_on_arrive("station", function(player)
 		aaf_tasks.add(player, "station:report", "Report to the Chief (front desk phone)")
 		aaf_notebook.refresh(player)
 	end
-end)
-
--- Temporary: the case being solved will set it
-core.register_on_joinplayer(function(player)
-	aaf_flags.set(player, CAN_LEAVE, true)
 end)

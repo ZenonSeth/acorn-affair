@@ -19,7 +19,7 @@ local LIGHTS = {
 	floor = {
 		halo = {offset = vector.new(0, 0.22, 0), size = 1.4},
 		beams = {
-			{base = vector.new(0, 0.41, 0), dir = 1, width = 0.8, height = 0.8},
+			{base = vector.new(0, 0.41, 0), dir = 1, width = 0.8, height = 0.8, face_pos = true},
 			{base = vector.new(0, 0.06, 0), dir = -1, width = 1.3, height = 1.56},
 		},
 	},
@@ -87,16 +87,27 @@ local function check_lamp(self)
 	return true
 end
 
--- the game has one player; beams face that player's view
-local view_yaw
+-- the game has one player; beams face that player's view (or camera position when _face_pos is set)
+local view_yaw, cam_pos
 
 core.register_globalstep(function()
 	local player = core.get_connected_players()[1]
 	view_yaw = player and player:get_look_horizontal()
+	cam_pos = player and player:get_pos()
 end)
 
+local function beam_yaw(pos, face_pos)
+	if face_pos and cam_pos then
+		local dx, dz = cam_pos.x - pos.x, cam_pos.z - pos.z
+		if dx * dx + dz * dz > 1e-6 then
+			return math.atan2(-dx, dz)
+		end
+	end
+	return view_yaw
+end
+
 local function face_camera(self)
-	local yaw = view_yaw
+	local yaw = beam_yaw(self.object:get_pos(), self._face_pos)
 	if not yaw then
 		return
 	end
@@ -191,14 +202,15 @@ function aaf_glow.spawn(pos)
 	for _, b in ipairs(light.beams or {}) do
 		local centre = b.origin and rotate(b.origin, node.param2, ptype)
 			or vector.add(rotate(b.base, node.param2, ptype), vector.new(0, b.dir * b.height / 2, 0))
+		local beam_pos = vector.add(pos, centre)
 		local beam_name = entry[1] == "wall" and "aaf_glow:wall_beam" or "aaf_glow:beam"
-		local beam = add(beam_name, vector.add(pos, centre), lamp, entry[1],
-			{_beam = true, _flip = b.dir < 0, _size = {x = b.width, y = b.height}})
+		local beam = add(beam_name, beam_pos, lamp, entry[1],
+			{_beam = true, _flip = b.dir < 0, _face_pos = b.face_pos, _size = {x = b.width, y = b.height}})
 		if beam then
 			if entry[1] == "wall" then
 				beam:set_yaw((node.param2 % 4) * math.pi / 2)
 			else
-				beam:set_yaw(view_yaw or 0)
+				beam:set_yaw(beam_yaw(beam_pos, b.face_pos) or 0)
 			end
 			objs[#objs + 1] = beam
 		end

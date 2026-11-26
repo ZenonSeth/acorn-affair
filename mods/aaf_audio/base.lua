@@ -311,6 +311,7 @@ end)
 music.register_track("office", {sound = "aaf_audio_music_cool_vibes"})
 music.register_track("station", {sound = "aaf_audio_music_impact_prelude"})
 music.register_track("call", {sound = "aaf_audio_music_covert_affair"})
+music.register_track("ending", {sound = "aaf_audio_music_investigations"})
 
 sfx.register("rain", {sound = "aaf_audio_rain", category = "ambience", gain = 0.2})
 sfx.register("phone_ring", {sound = "aaf_audio_phone_ring", gain = 0.5})

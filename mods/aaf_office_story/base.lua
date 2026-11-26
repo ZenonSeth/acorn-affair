@@ -9,6 +9,9 @@ local KEYS_HINTED = "office:keys_hinted"
 local TASK_ANSWER = "office:answer"
 local TASK_KEYS = "office:keys"
 local TASK_LEAVE = "office:leave"
+local TASK_LOCKPICKS = "station:lockpicks"
+local HAS_LOCKPICKS = "station:has_lockpicks"
+local STATION_ARRIVED = "station:arrived"
 local KEYS_HINT = "hold Sneak to crouch and look low"
 -- The key hunt's hint shows after this many wrong spots, or this many seconds
 local HINT_SPOTS = 2
@@ -34,6 +37,9 @@ local LEAVE_LINES = {
 	"The cab smelled of wet dog and broken dreams. "
 		.. "Twenty minutes later I was standing in the police station. Nobody was home.",
 }
+local RETURN_LINES = {"Back to the station. Same cab. Same wet dog."}
+local LOCKPICKS_LINE = "Three dollars, a photograph of a better man, and my lockpicking kit. "
+	.. "Never leave home without it. Except tonight."
 local KEYS_NOTE = "Maybe I should check low and look under things?"
 local KEYS_LINE = "Under the desk. Things always end up under the desk. So do I, some nights."
 local CHIEF = "Chief Harrington"
@@ -225,12 +231,18 @@ end
 
 -- Dead ends of the key hunt: spot id -> {keys, label, line, after (once the keys are found; none = inert)}
 local SPOTS = {
-	sofa = {keys = {"aaf_props:sofa_l#1", "aaf_props:sofa_r#1"}, label = "Search the sofa",
+	sofa = {keys = {"aaf_props:sofa_l#1", "aaf_props:sofa_r#1"},
+		label = function(player)
+			return aaf_office_story.can_sleep(player) and "Turn in for the night" or "Search the sofa"
+		end,
 		line = "Between the cushions: a nickel, a button and the last of my dignity. No keys."},
 	wastebasket = {keys = {"aaf_props:wastebasket#1"}, label = "Look in the wastebasket",
 		line = "Old case files. Old regrets. No keys.",
 		after = "Old case files. Old regrets. They'll keep."},
-	safe = {keys = {"aaf_props:safe#1"}, label = "Open the safe",
+	safe = {keys = {"aaf_props:safe#1"},
+		label = function(player)
+			return aaf_tasks.has(player, TASK_LOCKPICKS) and "Get lockpicking kit" or "Open the safe"
+		end,
 		line = "My safe. Three dollars and a photograph of a better man. No keys.",
 		after = "Three dollars and a photograph of a better man. Neither one's coming with me."},
 	cabinet_milk = {keys = {"aaf_props:cabinet_bottom#1"}, label = "Search the filing cabinet",
@@ -256,9 +268,22 @@ for id, spot in pairs(SPOTS) do
 		aaf_places.register_thing(PLACE, key, {
 			label = spot.label,
 			can_interact = function(player)
+				if id == "sofa" and aaf_office_story.can_sleep(player) then
+					return true
+				end
 				return aaf_flags.get(player, CALL_DONE) and (spot.after ~= nil or not aaf_flags.get(player, CAN_LEAVE))
 			end,
 			on_interact = function(player)
+				if id == "sofa" and aaf_office_story.can_sleep(player) then
+					aaf_office_story.start_ending(player)
+					return
+				end
+				if id == "safe" and aaf_tasks.has(player, TASK_LOCKPICKS) then
+					aaf_flags.set(player, HAS_LOCKPICKS, true)
+					aaf_tasks.complete(player, TASK_LOCKPICKS)
+					say(player, LOCKPICKS_LINE)
+					return
+				end
 				if aaf_flags.get(player, CAN_LEAVE) then
 					say(player, spot.after)
 					return
@@ -296,14 +321,18 @@ aaf_interact.register("aaf_office_story:door", {
 		return aaf_flags.get(player, CALL_DONE)
 	end,
 	label = function(player)
-		return aaf_flags.get(player, CAN_LEAVE) and "Leave" or "Try the door"
+		if not aaf_flags.get(player, CAN_LEAVE) then
+			return "Try the door"
+		end
+		return aaf_flags.get(player, STATION_ARRIVED) and "Return to station" or "Leave"
 	end,
 	on_interact = function(player)
 		if not aaf_flags.get(player, CAN_LEAVE) then
 			say(player, LOCKED_LINE)
 			return
 		end
-		if aaf_places.travel(player, "station", LEAVE_LINES) then
+		local lines = aaf_flags.get(player, STATION_ARRIVED) and RETURN_LINES or LEAVE_LINES
+		if aaf_places.travel(player, "station", lines) then
 			aaf_tasks.complete(player, TASK_LEAVE)
 		end
 	end,
@@ -339,6 +368,8 @@ core.register_on_joinplayer(function(player)
 		end
 	elseif aaf_tasks.has(player, TASK_KEYS) then
 		start_hint_timer(player)
+	elseif aaf_places.get(player) == PLACE then
+		aaf_office_story.maybe_offer_sleep(player)
 	end
 end)
 

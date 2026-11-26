@@ -6,6 +6,10 @@ local FACT_PREFIX = "station:fact_"
 local KNOWS_PREFIX = "station:knows_"
 local SEEN_PREFIX = "station:seen_"
 local ACCUSED_PREFIX = "station:accused_"
+local TASK_CASE = "station:case"
+local TASK_ALIBI_PREFIX = "station:alibi_"
+local HAS_LOCKPICKS = "station:has_lockpicks"
+local SOLVED_TASK_TEXT = "Tell the Chief what really happened"
 -- JSON list of fact ids in the order the player found them
 local FOUND_KEY = "station:found"
 
@@ -180,6 +184,9 @@ local function update(player)
 			end
 		end
 	end
+	if aaf_station_story.knows(player, "solved") then
+		aaf_tasks.set_text(player, TASK_CASE, SOLVED_TASK_TEXT)
+	end
 	return new
 end
 
@@ -197,6 +204,9 @@ function aaf_station_story.learn(player, id)
 		aaf_utils.set_json(meta, FOUND_KEY, found)
 		update(player)
 	end)
+	if facts[id].alibi then
+		aaf_tasks.complete(player, TASK_ALIBI_PREFIX .. facts[id].alibi)
+	end
 end
 
 -- The known facts in the order found; ones set by hand (e.g. /flag) follow, by title
@@ -343,6 +353,7 @@ local THINGS = {
 	["aaf_props:cabinet_top_open#30"] = {label = "Look in the drawer", fact = "insurance", doc = true},
 	["aaf_props:wastebasket#30"] = {label = "Look in the wastebasket", fact = "crumpled_note", doc = true},
 	["aaf_props:safe#30"] = {label = "Try the safe", fact = "safe",
+		picks_line = "Locked. My picks are for jammed kitchen doors, not a police chief's safe.",
 		later = {when = "dinner_program", line = "Still locked. Still none of my business."}},
 	["aaf_props:desk_l_papers#30"] = {label = "Search the Chief's drawer", fact = "dinner_program", doc = true,
 		locked = "The Chief's private drawer. Locked.",
@@ -383,6 +394,9 @@ local function use(player, thing)
 	local extra = not known and (thing.cleared or thing.first)
 	-- Documents read as "Title: line" until the document panel exists
 	local line = thing.doc and fact.title .. ": " .. fact.line or fact.line
+	if thing.picks_line and aaf_flags.get(player, HAS_LOCKPICKS) then
+		line = thing.picks_line
+	end
 	-- One thought at a time, so the alibi's verdict joins the line
 	say(player, extra and line .. " " .. extra or line)
 	aaf_station_story.learn(player, id)
