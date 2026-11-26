@@ -319,3 +319,4 @@ sfx.register("door_close", {sound = "aaf_audio_door_close", max_hear_distance = 
 sfx.register("door_open", {sound = "aaf_audio_door_open", max_hear_distance = 16})
 sfx.register("footstep_wood", {sound = "aaf_audio_footstep_wood", gain = 0.9})
 sfx.register("footstep_concrete", {sound = "aaf_audio_footstep_concrete", gain = 0.9})
+sfx.register("keys_jingle", {sound = "aaf_audio_keys_jingle", gain = 0.7})

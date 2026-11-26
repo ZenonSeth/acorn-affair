@@ -90,27 +90,29 @@ graph.notes = {
 -- In notebook order. listed: when the suspect shows up; accuse: when the phone offers them (and listed);
 -- lines: {when, line, struck (requirement that crosses the line out), struck_line}; cleared: the alibi line
 graph.suspects = {
-	{id = "miller", name = "Sgt. Edna Miller", listed = "register", accuse = "register",
+	{id = "miller", name = "Sgt. Edna Miller", listed = "register", accuse = {any = {"memo", "missing_notice"}},
 		lines = {
 			{when = "register", line = "In 17:58, out 23:30. Ran the front desk all night."},
 			{when = {any = {"memo", "missing_notice"}}, line = "Writes memos nobody reads. Notices everything."},
 		},
 		cleared = "On the phone from 21:35 to 23:25, every call logged."},
-	{id = "jenkins", name = "Det. Walter Jenkins", listed = "register", accuse = "register",
+	{id = "jenkins", name = "Det. Walter Jenkins", listed = "register",
+		accuse = {any = {"noise_complaint", "peanut_complaint"}},
 		lines = {
-			{when = "register", line = "In 18:10, out 2?:05. Coffee ate the hour."},
+			{when = "register", line = "In 18:10, out 2?:05. A coffee smudge obscures the hour."},
 			{when = "peanut_complaint", line = "Missing peanuts, third time this week. Blames Thompson."},
 			{when = "noise_complaint", line = "Thompson says he comes back after signing out."},
 		},
 		cleared = "At the Rialto at 22:20. Love Among the Daisies."},
-	{id = "thompson", name = "Det. Ray Thompson", listed = "register", accuse = "noise_complaint",
+	{id = "thompson", name = "Det. Ray Thompson", listed = "register", accuse = "thompson_note",
 		lines = {
 			{when = "register", line = "In 18:30, out 23:45. Last officer out."},
 			{when = "noise_complaint", line = "Hears noises. Blames Jenkins."},
 			{when = "thompson_note", line = "Somebody's been biting his sandwiches."},
 		},
 		cleared = "At his desk from 22:06 to 23:40, watching Jenkins' peanuts."},
-	{id = "fred", name = "Fred Pickett", listed = {all = {"register", {any = {"fred_list", "fred_report"}}}},
+	{id = "fred", name = "Fred Pickett",
+		listed = {any = {"door_note", {all = {"register", {any = {"fred_list", "fred_report"}}}}}},
 		accuse = "register",
 		lines = {
 			{when = "register", line = "Patrolman. Never signed in. Was here anyway."},
@@ -119,7 +121,7 @@ graph.suspects = {
 		},
 		cleared = "Stuck in the kitchen from 19:00 to 23:30."},
 	{id = "chief", name = "Chief Arthur Harrington", listed = {all = {}},
-		accuse = {any = {"insurance", "crumpled_note", "safe"}},
+		accuse = {at_least = 2, of = {"insurance", "crumpled_note", "safe"}},
 		lines = {
 			{when = {all = {}},
 				line = "My client. Left at 21:30 for a dinner, came back at 23:50 for his umbrella, found the stand empty."},

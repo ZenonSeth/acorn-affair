@@ -105,6 +105,23 @@ function aaf_tasks.complete(player, id)
 	end)
 end
 
+-- Drops every open task; already ticked-off ones still fade out normally
+function aaf_tasks.clear(player)
+	local state = states[player:get_player_name()]
+	if not state then
+		return
+	end
+	local kept = {}
+	for _, entry in ipairs(state.entries) do
+		if entry.done then
+			kept[#kept + 1] = entry
+		end
+	end
+	state.entries = kept
+	save(player, state)
+	redraw(player, state)
+end
+
 core.register_on_joinplayer(function(player)
 	local entries = {}
 	for _, saved in ipairs(get_json(player:get_meta(), STORE_KEY) or {}) do

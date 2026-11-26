@@ -5,7 +5,7 @@ local escape = aaf_gui.escape
 local TALK_WIDTH = 16
 local PAD = 0.5
 local PORTRAIT = 3.2
-local TEXT_HEIGHT = 1.9
+local TEXT_HEIGHT = 2.2
 local OPTION_HEIGHT = 0.75
 local OPTION_GAP = 0.12
 
@@ -27,7 +27,7 @@ end
 local function talk_form(def)
 	local x = def.portrait and PAD + PORTRAIT + 0.4 or PAD
 	local w = TALK_WIDTH - x - PAD
-	local y = 1.3 + TEXT_HEIGHT + 0.15
+	local y = 1.35 + TEXT_HEIGHT + 0.15
 	local options = {}
 	for i, option in ipairs(def.options) do
 		options[#options + 1] = ("button[%g,%g;%g,%g;option%d;%s]"):format(x, y, w, OPTION_HEIGHT, i,
@@ -45,10 +45,10 @@ local function talk_form(def)
 		"allow_close[false]",
 		("background9[0,0;%g,%g;%s;false;%d]"):format(TALK_WIDTH, height, theme.window, theme.window_slice),
 		def.portrait and aaf_gui.portrait(PAD, PAD, PORTRAIT, def.portrait) or "",
-		("hypertext[%g,0.4;%g,0.6;speaker;<global size=20 color=%s>%s]"):format(x, w, theme.text,
+		("hypertext[%g,0.35;%g,0.7;speaker;<global size=24 color=%s>%s]"):format(x, w, theme.text,
 			escape(def.speaker or "")),
-		def.speaker and aaf_gui.underline(x, 0.98, 3) or "",
-		("hypertext[%g,1.3;%g,%g;text;<global size=18 color=%s>%s]"):format(x, w, TEXT_HEIGHT, theme.text,
+		def.speaker and aaf_gui.underline(x, 1.05, 3) or "",
+		("hypertext[%g,1.35;%g,%g;text;<global size=22 color=%s>%s]"):format(x, w, TEXT_HEIGHT, theme.text,
 			escape(def.text)),
 		table.concat(options),
 	})

@@ -2,13 +2,19 @@ local graph = aaf_station_story.graph
 local facts = graph.facts
 
 local PLACE = "station"
+local DETECTIVE = "Jack Graves"
 local FACT_PREFIX = "station:fact_"
 local KNOWS_PREFIX = "station:knows_"
 local SEEN_PREFIX = "station:seen_"
 local ACCUSED_PREFIX = "station:accused_"
 local TASK_CASE = "station:case"
 local TASK_ALIBI_PREFIX = "station:alibi_"
+local TASK_MILLER_KEY = "station:miller_key"
+local TASK_CHIEF_KEY = "station:chief_key"
 local HAS_LOCKPICKS = "station:has_lockpicks"
+local HAS_MILLER_KEY = "station:has_miller_key"
+local HAS_JENKINS_KEY = "station:has_jenkins_key"
+local HAS_CHIEF_KEY = "station:has_chief_key"
 local SOLVED_TASK_TEXT = "Tell the Chief what really happened"
 -- JSON list of fact ids in the order the player found them
 local FOUND_KEY = "station:found"
@@ -242,6 +248,9 @@ local function snapshot(player)
 	for _, id in ipairs(aaf_station_story.found(player)) do
 		add("clue:" .. id, "Clue added: " .. facts[id].title)
 	end
+	if aaf_station_story.knows(player, "register") then
+		add("item:station_keys", "Item added: Chief's station key")
+	end
 	for i, note in ipairs(graph.notes) do
 		if aaf_station_story.knows(player, note.clue) and holds(player, note.when) then
 			add("note:" .. i, "Note added: " .. facts[note.clue].title, "clue:" .. note.clue)
@@ -297,19 +306,65 @@ core.register_on_joinplayer(function(player)
 	aaf_notebook.refresh(player)
 end)
 
+-- Interactive pickup dialog for physical keys
+local function offer_key(player, def)
+	aaf_dialog.talk(player, {
+		speaker = DETECTIVE,
+		portrait = "detective",
+		text = def.text,
+		options = {
+			{text = def.take, on_choose = function(p)
+				aaf_audio.sfx.play("keys_jingle", {player = p})
+				aaf_flags.set(p, def.flag, true)
+				if def.task then
+					aaf_tasks.complete(p, def.task)
+				end
+				aaf_notebook.refresh(p)
+				if def.item_name then
+					aaf_notebook.notify(p, {"Item added: " .. def.item_name})
+				end
+				say(p, def.taken_line)
+			end},
+			{text = "Close", on_choose = function() end},
+		},
+	})
+end
+
+local function offer_jenkins_trash(player)
+	aaf_dialog.talk(player, {
+		speaker = DETECTIVE,
+		portrait = "detective",
+		text = "Wrappers and a racing form. Jenkins lost.",
+		options = {
+			{text = "Dig through trash", on_choose = function(p)
+				offer_key(p, {
+					text = "Under the racing form and a crumpled peanut wrapper: a small desk key.",
+					take = "Take Jenkins' key",
+					flag = HAS_JENKINS_KEY,
+					item_name = "Jenkins' key",
+					taken_line = "At the bottom of his own wastebasket. Figures.",
+				})
+			end},
+			{text = "Close", on_choose = function() end},
+		},
+	})
+end
+
 -- Thing key -> {label, then one of: fact (+ doc: shown as a document; before: the line while the fact's gate
--- does not hold; later = {when, line} once it does; locked: the line until its alibi suspect is accused;
+-- does not hold; later = {when, line} once it does; key_flag/locked/locked_accused: physical unlock flag;
 -- cleared: narration when the alibi is read; first: narration joined on the first read; task: completed on the
--- first read), or line (flavor only)}
+-- first read), on_use(player), or line (flavor only)}
 local THINGS = {
 	-- Reception
 	["aaf_props:register#1"] = {label = "Read the register", fact = "register", doc = true,
-		first = "Under it, the Chief's keys.", task = "station:keys"},
+		first = "Under it, the Chief's keys.", sound = "keys_jingle", task = "station:keys"},
 	["aaf_props:papers_mug#1"] = {label = "Read the papers", fact = "noise_complaint", doc = true},
 	["aaf_props:board_l_plain#2"] = {label = "Read the missing property notice", fact = "missing_notice", doc = true},
 	["aaf_props:board_r_plain#2"] = {label = "Read the window notice", fact = "window_notice", doc = true},
 	["aaf_props:reception_desk#1"] = {label = "Search Miller's drawer", fact = "miller_log", doc = true,
+		key_flag = HAS_MILLER_KEY,
 		locked = "Locked.",
+		locked_accused = "Locked. The Chief said she keeps a spare key in the storage crates.",
 		cleared = "Miller never left that desk. Mrs. Dabney made sure of it. Miller was clean."},
 	-- Detectives' room
 	["aaf_props:board_l_plain#10"] = {label = "Read the memo", fact = "memo", doc = true},
@@ -321,27 +376,50 @@ local THINGS = {
 		before = "Somebody's lunch. Not mine. Not evidence."},
 	["aaf_props:phone_papers#11"] = {label = "Read the note", fact = "thompson_note", doc = true},
 	["aaf_props:desk_l#11"] = {label = "Search Thompson's drawer", fact = "thompson_log", doc = true,
-		locked = "Locked.",
+		key_flag = HAS_LOCKPICKS,
+		locked = "Locked. An old lock.",
+		locked_accused = "Locked. An old lock. My lockpicking kit from the office safe would open it.",
 		cleared = "Thompson watched that desk for an hour and a half and never saw a thing. He was watching at "
 			.. "eye level. Most people do. Thompson was clean."},
 	["aaf_props:lamp_peanuts#12"] = {label = "Look at the peanuts",
 		line = "A jar of peanuts, guarded like the crown jewels."},
 	["aaf_props:phone_papers#12"] = {label = "Read the complaint", fact = "peanut_complaint", doc = true},
 	["aaf_props:desk_l_papers#12"] = {label = "Search the bottom drawer", fact = "ticket_stub", doc = true,
+		key_flag = HAS_JENKINS_KEY,
 		locked = "Locked.",
+		locked_accused = "Locked. The Chief said Jenkins probably dropped his key somewhere near his desk.",
 		cleared = "Jenkins. A man who'd rather be a suspect than be seen at a love picture. I respected that. "
 			.. "Jenkins was clean."},
 	["aaf_props:peanut_shells#12"] = {label = "Look at the shells", fact = "shells",
 		before = "Peanut shells. Jenkins is a slob. Not a crime."},
-	["aaf_props:wastebasket#12"] = {label = "Look in the wastebasket", line = "Wrappers and a racing form. Jenkins lost."},
+	["aaf_props:wastebasket#12"] = {label = "Look in the wastebasket", on_use = function(player)
+		if not aaf_flags.get(player, HAS_JENKINS_KEY) then
+			offer_jenkins_trash(player)
+		else
+			say(player, "Wrappers and a racing form. Jenkins lost.")
+		end
+	end},
 	["aaf_props:desk_l#13"] = {label = "Search the empty desk", line = "Nobody's desk. Miller's memos pile up on it like snow."},
 	["aaf_props:paper_scrap#17"] = {label = "Look at the paper", line = "Last week's duty roster, gone soft from the "
 		.. "radiator. Fred's name is on every night shift. Nobody's crossed it out."},
 	-- Chief's office
 	["aaf_props:display_case_top#30"] = {label = "Look at the display case", fact = "display_case"},
 	["aaf_props:certificate_blue#30"] = {label = "Read the certificate", fact = "certificate", doc = true},
-	["aaf_props:certificate#30"] = {label = "Read the certificate",
-		line = "Ten years of service. The Chief framed it himself."},
+	["aaf_props:certificate#30"] = {label = "Read the certificate", on_use = function(player)
+		if aaf_station_story.is_accused(player, "chief") and not aaf_flags.get(player, HAS_CHIEF_KEY) then
+			offer_key(player, {
+				text = "Ten years of service. The Chief framed it himself. "
+					.. "Sure enough, there's a small brass key taped to the back.",
+				take = "Take the Chief's key",
+				flag = HAS_CHIEF_KEY,
+				task = TASK_CHIEF_KEY,
+				item_name = "Chief's drawer key",
+				taken_line = "Taped behind his own commendation. Subtle.",
+			})
+		else
+			say(player, "Ten years of service. The Chief framed it himself.")
+		end
+	end},
 	["aaf_props:photo_acorn#30"] = {label = "Look at the photo", line = "The Chief and the ACORN. He's smiling. The ACORN isn't."},
 	["aaf_props:window_sill_prints#30"] = {label = "Look at the window", fact = "sill_prints",
 		before = "Open a crack. Rain on the sill, the elm right outside. Nice view, if you like trees.",
@@ -353,14 +431,16 @@ local THINGS = {
 	["aaf_props:cabinet_top_open#30"] = {label = "Look in the drawer", fact = "insurance", doc = true},
 	["aaf_props:wastebasket#30"] = {label = "Look in the wastebasket", fact = "crumpled_note", doc = true},
 	["aaf_props:safe#30"] = {label = "Try the safe", fact = "safe",
-		picks_line = "Locked. My picks are for jammed kitchen doors, not a police chief's safe.",
+		picks_line = "This lock is beyond my lockpicking skills. And I wouldn't want to anyway.",
 		later = {when = "dinner_program", line = "Still locked. Still none of my business."}},
 	["aaf_props:desk_l_papers#30"] = {label = "Search the Chief's drawer", fact = "dinner_program", doc = true,
+		key_flag = HAS_CHIEF_KEY,
 		locked = "The Chief's private drawer. Locked.",
+		locked_accused = "The Chief's private drawer. Locked. He said the key is behind his service certificate.",
 		cleared = "Forty-seven minutes. The ovation was probably people standing up to leave. The Chief was clean. "
 			.. "Long-winded, but clean."},
 	["aaf_props:radio#30"] = {label = "Turn on the radio", line = "The late news. The late news didn't know about this yet."},
-	-- Kitchen (its door only opens once Fred is accused)
+	-- Kitchen (its door only opens with the lockpicking kit)
 	["aaf_props:notice#20"] = {label = "Read the note", fact = "door_note", doc = true,
 		cleared = "Four and a half hours in a kitchen with a cold percolator and a view of a door. Fred had the best "
 			.. "alibi in the building and the worst evening. Fred was clean."},
@@ -369,8 +449,26 @@ for i = 1, 9 do
 	THINGS["aaf_props:crate_large#" .. i] = {label = "Look in the crate",
 		line = "Storage of old case notes, nothing interesting here."}
 end
+THINGS["aaf_props:crate_large#5"] = {label = "Look in the crate", on_use = function(player)
+	if aaf_station_story.is_accused(player, "miller") and not aaf_flags.get(player, HAS_MILLER_KEY) then
+		offer_key(player, {
+			text = "Old case notes. Tucked under the top folder, a small key with a neat label: MILLER - DESK.",
+			take = "Take Miller's key",
+			flag = HAS_MILLER_KEY,
+			task = TASK_MILLER_KEY,
+			item_name = "Miller's spare key",
+			taken_line = "Labelled and filed. Classic Miller.",
+		})
+	else
+		say(player, "Storage of old case notes, nothing interesting here.")
+	end
+end}
 
 local function use(player, thing)
+	if thing.on_use then
+		thing.on_use(player)
+		return
+	end
 	if thing.line then
 		say(player, thing.line)
 		return
@@ -378,8 +476,9 @@ local function use(player, thing)
 	local id = thing.fact
 	local fact = facts[id]
 	local known = aaf_station_story.knows(player, id)
-	if thing.locked and not known and not aaf_station_story.is_accused(player, fact.alibi) then
-		say(player, thing.locked)
+	if thing.key_flag and not known and not aaf_flags.get(player, thing.key_flag) then
+		local accused = fact.alibi and aaf_station_story.is_accused(player, fact.alibi)
+		say(player, accused and thing.locked_accused or thing.locked)
 		return
 	end
 	if fact.gate and not known and not holds(player, fact.gate) then
@@ -399,6 +498,9 @@ local function use(player, thing)
 	end
 	-- One thought at a time, so the alibi's verdict joins the line
 	say(player, extra and line .. " " .. extra or line)
+	if not known and thing.sound then
+		aaf_audio.sfx.play(thing.sound, {player = player})
+	end
 	aaf_station_story.learn(player, id)
 	if thing.task then
 		aaf_tasks.complete(player, thing.task)
@@ -407,9 +509,9 @@ end
 
 for key, thing in pairs(THINGS) do
 	local fact = thing.fact and facts[thing.fact]
-	assert(thing.line or fact, "aaf_station_story: thing " .. key .. " has neither a line nor a known fact")
+	assert(thing.line or thing.on_use or fact, "aaf_station_story: thing " .. key .. " has neither a line nor a known fact")
 	assert(not fact or not fact.gate or thing.before, "aaf_station_story: gated thing " .. key .. " needs a before line")
-	assert(not thing.locked or fact.alibi, "aaf_station_story: locked thing " .. key .. " is not an alibi")
+	assert(not thing.key_flag or thing.locked, "aaf_station_story: keyed thing " .. key .. " needs a locked line")
 	aaf_places.register_thing(PLACE, key, {
 		label = thing.label,
 		on_interact = function(player)

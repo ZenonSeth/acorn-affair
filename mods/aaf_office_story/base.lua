@@ -38,8 +38,9 @@ local LEAVE_LINES = {
 		.. "Twenty minutes later I was standing in the police station.\nNobody was home.",
 }
 local RETURN_LINES = {"Back to the station. Same cab. Same wet dog."}
-local LOCKPICKS_LINE = "Three dollars, a lucky dime I don't trust, and my lockpicking kit. "
-	.. "Never leave home without it. Except tonight."
+local SAFE_PICKS_TEXT = "My safe. Three dollars, a lucky dime I don't trust, and my lockpicking kit."
+local LOCKPICKS_LINE = "Never leave home without it."
+local DETECTIVE = "Jack Graves"
 local KEYS_NOTE = "Maybe I should check low and look under things?"
 local KEYS_LINE = "Under the desk. Things always end up under the desk. Gravity has it out for me."
 local CHIEF = "Chief Harrington"
@@ -86,6 +87,26 @@ aaf_notebook.register_tab({id = "office", title = "Notes", default = true, visib
 		page.x + 0.4, page.y + 0.4, page.w - 0.8, page.h - 0.8, aaf_gui.theme.ink, text)
 end})
 
+aaf_notebook.register_item({
+	id = "office_keys",
+	title = "Office key",
+	desc = "Key to my office door. Found under the desk.",
+	icon = "aaf_gui_item_key_office.png",
+	has = function(player)
+		return aaf_flags.get(player, CAN_LEAVE) ~= nil
+	end,
+})
+
+aaf_notebook.register_item({
+	id = "lockpicks",
+	title = "Lockpicking kit",
+	desc = "My old picks from the safe. Good for jammed doors and worn locks.",
+	icon = "aaf_gui_item_lockpicks.png",
+	has = function(player)
+		return aaf_flags.get(player, HAS_LOCKPICKS) ~= nil
+	end,
+})
+
 -- player name -> the token of the running ring loop
 local ringing = {}
 
@@ -129,7 +150,12 @@ local function start_ringing(player)
 	if not phone then
 		return
 	end
-	local pos = phone + vector.new(0, 0.1, 0)
+	-- the phone's centre in the phone_mug nodebox, turned by its 4dir rotation
+	local x, z = -4 / 32, 8.5 / 32
+	for _ = 1, core.get_node(phone).param2 % 4 do
+		x, z = z, -x
+	end
+	local pos = phone + vector.new(x, 0.1, z)
 	local token = {}
 	ringing[name] = token
 	local function burst()
@@ -243,7 +269,7 @@ local SPOTS = {
 		label = function(player)
 			return aaf_tasks.has(player, TASK_LOCKPICKS) and "Get lockpicking kit" or "Open the safe"
 		end,
-		line = "My safe. Three dollars and a lucky dime I don't trust.\nNo keys.",
+		line = SAFE_PICKS_TEXT .. "\nNo keys.",
 		after = "Three dollars and a lucky dime I don't trust. Neither one's coming with me."},
 	cabinet_milk = {keys = {"aaf_props:cabinet_bottom#1"}, label = "Search the filing cabinet",
 		line = "A bottle of milk. Been in there so long it practically pays rent.\nNo keys."},
@@ -263,6 +289,26 @@ local function searched_count(player)
 	return count
 end
 
+-- The safe's kit, taken explicitly so the player knows they carry it
+local function offer_lockpicks(player)
+	aaf_dialog.talk(player, {
+		speaker = DETECTIVE,
+		portrait = "detective",
+		text = SAFE_PICKS_TEXT,
+		options = {
+			{text = "Take the lockpicks", on_choose = function(p)
+				aaf_audio.sfx.play("keys_jingle", {player = p})
+				aaf_flags.set(p, HAS_LOCKPICKS, true)
+				aaf_tasks.complete(p, TASK_LOCKPICKS)
+				aaf_notebook.refresh(p)
+				aaf_notebook.notify(p, {"Item added: Lockpicking kit"})
+				say(p, LOCKPICKS_LINE)
+			end},
+			{text = "Close the safe", on_choose = function() end},
+		},
+	})
+end
+
 for id, spot in pairs(SPOTS) do
 	for _, key in ipairs(spot.keys) do
 		aaf_places.register_thing(PLACE, key, {
@@ -278,14 +324,12 @@ for id, spot in pairs(SPOTS) do
 					aaf_office_story.start_ending(player)
 					return
 				end
-				if id == "safe" and aaf_tasks.has(player, TASK_LOCKPICKS) then
-					aaf_flags.set(player, HAS_LOCKPICKS, true)
-					aaf_tasks.complete(player, TASK_LOCKPICKS)
-					say(player, LOCKPICKS_LINE)
-					return
-				end
 				if aaf_flags.get(player, CAN_LEAVE) then
-					say(player, spot.after)
+					if id == "safe" and not aaf_flags.get(player, HAS_LOCKPICKS) then
+						offer_lockpicks(player)
+					else
+						say(player, spot.after)
+					end
 					return
 				end
 				say(player, spot.line)
@@ -308,10 +352,12 @@ aaf_places.register_thing(PLACE, "aaf_props:desk_r_keys#1", {
 	end,
 	on_interact = function(player, target)
 		say(player, KEYS_LINE)
+		aaf_audio.sfx.play("keys_jingle", {player = player})
 		aaf_flags.set(player, CAN_LEAVE, true)
 		aaf_tasks.complete(player, TASK_KEYS)
 		aaf_tasks.add(player, TASK_LEAVE, "Leave the office")
 		aaf_notebook.refresh(player)
+		aaf_notebook.notify(player, {"Item added: Office key"})
 		core.swap_node(target.pos, {name = "aaf_props:desk_r", param2 = target.node.param2})
 	end,
 })

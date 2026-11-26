@@ -138,6 +138,46 @@ aaf_notebook.register_tab({id = "suspects", title = "Suspects", visible = arrive
 		end
 	end})
 
+aaf_notebook.register_item({
+	id = "station_keys",
+	title = "Chief's station key",
+	desc = "Left under the register. Opens the station doors.",
+	icon = "aaf_gui_item_key_station.png",
+	has = function(player)
+		return aaf_station_story.knows(player, "register")
+	end,
+})
+
+aaf_notebook.register_item({
+	id = "miller_key",
+	title = "Miller's spare key",
+	desc = "Labelled MILLER - DESK. Found in the storage crates.",
+	icon = "aaf_gui_item_key_miller.png",
+	has = function(player)
+		return aaf_flags.get(player, "station:has_miller_key") ~= nil
+	end,
+})
+
+aaf_notebook.register_item({
+	id = "jenkins_key",
+	title = "Jenkins' key",
+	desc = "A small desk key fished out of Jenkins' wastebasket.",
+	icon = "aaf_gui_item_key_jenkins.png",
+	has = function(player)
+		return aaf_flags.get(player, "station:has_jenkins_key") ~= nil
+	end,
+})
+
+aaf_notebook.register_item({
+	id = "chief_key",
+	title = "Chief's drawer key",
+	desc = "Brass key taped behind his ten-year service certificate.",
+	icon = "aaf_gui_item_key_chief.png",
+	has = function(player)
+		return aaf_flags.get(player, "station:has_chief_key") ~= nil
+	end,
+})
+
 aaf_notebook.set_hint_source(function(player)
 	if not arrived(player) then
 		return nil

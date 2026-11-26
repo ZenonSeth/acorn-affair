@@ -52,12 +52,12 @@ aaf_doors.set_rule("reception", function(player)
 	return aaf_station_story.knows(player, "register") or RECEPTION_LOCKED_LINE
 end)
 
--- Stuck until Fred is accused and the detective fetches the lockpicking kit
+-- Stuck until the detective brings the lockpicking kit from the office safe
 aaf_doors.set_rule("kitchen", function(player)
-	if not aaf_station_story.is_accused(player, "fred") then
-		return KITCHEN_STUCK_LINE
+	if aaf_flags.get(player, HAS_LOCKPICKS) then
+		return true
 	end
-	return aaf_flags.get(player, HAS_LOCKPICKS) ~= nil or KITCHEN_NEED_PICKS_LINE
+	return aaf_station_story.is_accused(player, "fred") and KITCHEN_NEED_PICKS_LINE or KITCHEN_STUCK_LINE
 end)
 
 -- The case's tasks, on the first arrival

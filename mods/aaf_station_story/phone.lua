@@ -11,7 +11,11 @@ local CONCEDED_PREFIX = "station:conceded_"
 local REPORTED = "station:reported"
 local CAN_LEAVE = "station:can_leave"
 local HAS_LOCKPICKS = "station:has_lockpicks"
+local HAS_MILLER_KEY = "station:has_miller_key"
+local HAS_CHIEF_KEY = "station:has_chief_key"
 local TASK_LOCKPICKS = "station:lockpicks"
+local TASK_MILLER_KEY = "station:miller_key"
+local TASK_CHIEF_KEY = "station:chief_key"
 local TASK_ALIBI_PREFIX = "station:alibi_"
 
 local OPENINGS = {
@@ -28,20 +32,23 @@ local NOTHING_LINES = {
 
 local ACCUSATIONS = {
 	miller = {
-		first = "Too organized. Nobody is that organized without hiding something. Check her drawer at the front desk.",
-		again = "I told you where to look, detective! Miller's drawer, right there at reception.",
+		first = "Too organized. Nobody is that organized without hiding something. Check her drawer at the front desk. "
+			.. "She keeps a spare key hidden in one of the crates in storage.",
+		again = "I told you where to look, detective! Miller's drawer, and her spare key is in the storage crates.",
 		concede = "On the phone all night? With Mrs. Dabney? Fine. Not Miller.",
 		task = "Check Miller's drawer",
 	},
 	jenkins = {
-		first = "Smudged sign-out! A man covering his tracks. Check his bottom drawer, he hides everything there.",
-		again = "I told you where to look, detective! Jenkins' bottom drawer.",
+		first = "Smudged sign-out! A man covering his tracks. Check his bottom drawer, he hides everything there. "
+			.. "He's a slob, he's probably dropped his key somewhere around his desk.",
+		again = "I told you where to look, detective! Jenkins' bottom drawer. Check around his desk for the key.",
 		concede = "So it wasn't Jenkins. Fine. He's still suspicious, in general.",
 		task = "Check Jenkins' bottom drawer",
 	},
 	thompson = {
-		first = "He was here latest! Check his desk drawer, he keeps a little book in there.",
-		again = "I told you where to look, detective! Thompson's desk drawer.",
+		first = "He was here latest! Check his desk drawer, he keeps a little book in there. "
+			.. "The lock is absurdly old, you have my permission to pick it open.",
+		again = "I told you where to look, detective! Thompson's desk drawer. Pick the lock if you have to.",
 		concede = "Watching peanuts for an hour and a half... Fine. Not Thompson. Who, then?",
 		task = "Check Thompson's drawer",
 	},
@@ -54,8 +61,9 @@ local ACCUSATIONS = {
 	},
 	chief = {
 		first = "ME? I was giving the toast at the Benevolent Society dinner! Forty-seven minutes! "
-			.. "The program is in my desk drawer. Read it and apologize.",
-		again = "I told you where to look, detective! My desk drawer. Read the program and apologize.",
+			.. "The program is in my desk drawer. The spare key is taped behind my service certificate. "
+			.. "Read it and apologize.",
+		again = "I told you where to look, detective! The key's behind my service certificate. Read the program and apologize.",
 		concede = "Finished accusing the man who hired you?",
 		task = "Check the Chief's desk drawer",
 	},
@@ -92,7 +100,7 @@ end
 local function next_opening(player)
 	for _, suspect in ipairs(graph.suspects) do
 		local info = ACCUSATIONS[suspect.id]
-		if info and aaf_station_story.is_cleared(player, suspect.id)
+		if info and aaf_station_story.is_cleared(player, suspect.id) and aaf_station_story.is_accused(player, suspect.id)
 				and not aaf_flags.get(player, CONCEDED_PREFIX .. suspect.id) then
 			aaf_flags.set(player, CONCEDED_PREFIX .. suspect.id, true)
 			return info.concede
@@ -108,6 +116,7 @@ local function finish_report(player)
 	aaf_flags.set(player, CAN_LEAVE, true)
 	aaf_tasks.complete(player, "station:case")
 	aaf_tasks.complete(player, "station:report")
+	aaf_tasks.clear(player)
 	aaf_tasks.add(player, "station:leave", "Return to your office")
 	hang_up(player)
 end
@@ -133,8 +142,12 @@ local function accuse_suspect(player, suspect)
 	local already = aaf_station_story.is_accused(player, suspect.id)
 	if not already then
 		aaf_station_story.accuse(player, suspect.id)
-		if suspect.id == "fred" and not aaf_flags.get(player, HAS_LOCKPICKS) then
+		if (suspect.id == "fred" or suspect.id == "thompson") and not aaf_flags.get(player, HAS_LOCKPICKS) then
 			aaf_tasks.add(player, TASK_LOCKPICKS, "Get your lockpicking kit from the office safe")
+		elseif suspect.id == "miller" and not aaf_flags.get(player, HAS_MILLER_KEY) then
+			aaf_tasks.add(player, TASK_MILLER_KEY, "Find Miller's spare key in storage")
+		elseif suspect.id == "chief" and not aaf_flags.get(player, HAS_CHIEF_KEY) then
+			aaf_tasks.add(player, TASK_CHIEF_KEY, "Get the Chief's key behind his certificate")
 		end
 		aaf_tasks.add(player, TASK_ALIBI_PREFIX .. suspect.id, info.task)
 	end
