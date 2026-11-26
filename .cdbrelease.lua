@@ -22,7 +22,7 @@ return {
 	version = stamp .. "-$Format:%h$",
 	type = "game",
 	title = "The Acorn Affair",
-	short_description = "A top-down noir detective story with absurd humor. Entry for the Luanti Game Jam 2026.",
+	short_description = "A top-down noir detective mystery: the case of the missing A.C.O.R.N. Entry for the Luanti Game Jam 2026.",
 	dev_state = "WIP",
 	tags = {},
 	content_warnings = {},

@@ -1,10 +1,8 @@
-A top-down noir detective game with absurd humor, built for the Luanti Game Jam 2026.
-
 # The Acorn Affair
 
-## Status
+A top-down noir detective mystery for the Luanti Game Jam 2026: the case of the missing A.C.O.R.N.
 
-The Acorn Affair is a work in progress.
+Midnight, rain on the glass, and the phone rings. Chief Harrington's prized golden A.C.O.R.N. award has vanished from his office, and he is certain one of his own officers took it. The station is empty. Walk the rooms, read the paperwork left behind, look closely, and decide who to name when you call the Chief back.
 
 ## Requirements
 
