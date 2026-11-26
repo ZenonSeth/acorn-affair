@@ -19,16 +19,19 @@ local SECONDS_PER_CHAR = 0.06
 local huds = {}
 
 local function wrap(text)
-	local lines, line = {}, ""
-	for word in text:gmatch("%S+") do
-		if line ~= "" and #line + 1 + #word > WRAP then
-			lines[#lines + 1] = line
-			line = word
-		else
-			line = line == "" and word or line .. " " .. word
+	local lines = {}
+	for part in (text .. "\n"):gmatch("([^\n]*)\n") do
+		local line = ""
+		for word in part:gmatch("%S+") do
+			if line ~= "" and #line + 1 + #word > WRAP then
+				lines[#lines + 1] = line
+				line = word
+			else
+				line = line == "" and word or line .. " " .. word
+			end
 		end
+		lines[#lines + 1] = line
 	end
-	lines[#lines + 1] = line
 	return lines
 end
 

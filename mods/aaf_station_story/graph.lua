@@ -144,7 +144,7 @@ graph.suspects = {
 
 -- The notebook's "what now" line: the first whose requirement holds
 graph.hints = {
-	{when = "solved", line = "Four answers. One culprit. I didn't like it. I needed a phone."},
+	{when = "solved", line = "Four answers. One culprit. Nobody was going to believe me. I needed a phone."},
 	{when = {all = {"miller_log", {none = {"window"}}}},
 		line = "Something kept that cat busy up the elm all night. The elm by the Chief's window."},
 	{when = {all = {"small", {none = {"window"}}}},

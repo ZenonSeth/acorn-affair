@@ -1,4 +1,3 @@
-local fill = aaf_utils.fill
 local constants = aaf_utils.constants
 
 -- Nodes per second
@@ -7,8 +6,8 @@ local CROUCH_SPEED = 2
 local GRAVITY = 20
 -- The camera sits this far from the focus point, back along the look direction
 local CAM_DISTANCE = 7
--- Focus point height above the avatar's origin
-local FOCUS_HEIGHT = 0.5
+-- Focus point height above the avatar's feet
+local FOCUS_HEIGHT = 1.45
 -- How fast the rig closes the gap to its target (per second)
 local FOLLOW_SPEED = 10
 -- Pitch is positive looking down; the player can never look higher than MIN_PITCH
@@ -19,9 +18,9 @@ local START_YAW = 0
 local SAVED_POS_KEY = "aaf_avatar:pos"
 
 local HALF_WIDTH = 0.3
-local HALF_HEIGHT = 0.95
--- Placeholder cube height while crouched, as a fraction of standing height
-local CROUCH_SCALE = 0.7
+local HEIGHT = 1.9
+local HALF_HEIGHT = HEIGHT / 2
+local ANIM_BLEND = 0.15
 
 -- Nodes walked per footstep; the first one plays this soon after starting off
 local STRIDE = 1.7
@@ -38,6 +37,7 @@ core.register_craftitem("aaf_avatar:build_hand", {
 	groups = {not_in_creative_inventory = 1},
 })
 local BUILD_PRIVS = {"fly", "noclip", "fast", "give"}
+local BUILD_FREEZE = "aaf_avatar:build"
 local PLAY_HUD = {
 	hotbar = false, healthbar = false, breathbar = false, crosshair = false,
 	wielditem = false, minimap = false, minimap_radar = false,
@@ -46,16 +46,14 @@ local BUILD_HUD = {hotbar = true, crosshair = true, wielditem = true}
 
 core.register_entity("aaf_avatar:detective", {
 	initial_properties = {
-		visual = "cube",
-		visual_size = {x = HALF_WIDTH * 2, y = HALF_HEIGHT * 2, z = HALF_WIDTH * 2},
-		-- +Y, -Y, +X, -X, +Z (front at yaw 0), -Z
-		textures = {
-			fill("#6b5a3e"), fill("#2a2a2a"), fill("#8a7350"),
-			fill("#8a7350"), fill("#d9c9a3"), fill("#8a7350"),
-		},
+		visual = "mesh",
+		mesh = "aaf_avatar_detective.glb",
+		-- glTF is exported in metres; Luanti's mesh scene node is in 1/10-node units
+		visual_size = {x = 10, y = 10, z = 10},
+		textures = {"aaf_avatar_detective.png"},
 		physical = true,
 		collide_with_objects = false,
-		collisionbox = {-HALF_WIDTH, -HALF_HEIGHT, -HALF_WIDTH, HALF_WIDTH, HALF_HEIGHT, HALF_WIDTH},
+		collisionbox = {-HALF_WIDTH, 0, -HALF_WIDTH, HALF_WIDTH, HEIGHT, HALF_WIDTH},
 		pointable = false,
 		static_save = false,
 	},
@@ -100,8 +98,7 @@ end
 -- Feet position of the player's detective, or nil while it does not exist
 function aaf_avatar.get_pos(player)
 	local session = sessions[player:get_player_name()]
-	local pos = session and session.avatar:get_pos()
-	return pos and vector.offset(pos, 0, -HALF_HEIGHT, 0)
+	return session and session.avatar:get_pos()
 end
 
 -- Horizontal unit vector the detective faces (the way it last walked), or nil while it does not exist
@@ -132,6 +129,17 @@ local function remove_session(name)
 	end
 end
 
+local function set_anim(session, name, blend)
+	if session.anim == name then
+		return
+	end
+	if session.anim then
+		session.avatar:stop_animation(session.anim)
+	end
+	session.avatar:play_animation(name, {speed = 1, blend = blend or ANIM_BLEND, loop = true})
+	session.anim = name
+end
+
 local function start(player, pos)
 	local name = player:get_player_name()
 	local avatar = core.add_entity(pos, "aaf_avatar:detective")
@@ -149,6 +157,7 @@ local function start(player, pos)
 	end
 	session.rig = rig
 	sessions[name] = session
+	set_anim(session, "idle", 0)
 	player:set_attach(rig)
 end
 
@@ -160,14 +169,15 @@ local function start_when_loaded(player, pos)
 			return
 		end
 		local p = core.get_player_by_name(name)
-		if p and not sessions[name] then
+		if p and not sessions[name] and not building[name] then
 			start(p, pos)
 		end
 	end)
 end
 
 core.register_on_joinplayer(function(player)
-	local pos = core.string_to_pos(player:get_meta():get_string(SAVED_POS_KEY)) or vector.copy(constants.spawn_pos)
+	local pos = core.string_to_pos(player:get_meta():get_string(SAVED_POS_KEY))
+		or vector.offset(constants.spawn_pos, 0, -HALF_HEIGHT, 0)
 	player:set_properties({is_visible = false, zoom_fov = 0})
 	player:set_camera({mode = "first"})
 	player:set_look_vertical(START_PITCH)
@@ -187,11 +197,12 @@ function aaf_avatar.teleport(player, pos)
 	if not session then
 		return false
 	end
-	session.avatar:set_pos(pos)
+	local feet = vector.offset(pos, 0, -HALF_HEIGHT, 0)
+	session.avatar:set_pos(feet)
 	session.avatar:set_velocity(vector.zero())
-	session.last_pos = vector.copy(pos)
+	session.last_pos = vector.copy(feet)
 	-- The rig would otherwise fly the camera across the map
-	session.rig:set_pos(rig_target(player, session, pos))
+	session.rig:set_pos(rig_target(player, session, feet))
 	session.rig:set_velocity(vector.zero())
 	return true
 end
@@ -207,21 +218,29 @@ function aaf_avatar.register_on_building(fn)
 	on_building[#on_building + 1] = fn
 end
 
--- Build mode: no detective, the player flies free with the hotbar and a reach of 10
+-- Build mode: the detective stays put with controls disconnected; the player flies free with the hotbar and reach 10
 function aaf_avatar.set_building(player, on)
 	local name = player:get_player_name()
 	if on == (building[name] ~= nil) then
 		return
 	end
 	local inv = player:get_inventory()
+	local session = sessions[name]
 	if on then
-		local session = sessions[name]
 		local pos = session and (session.avatar:get_pos() or session.last_pos) or player:get_pos()
 		local cam = session and session.rig:get_pos()
 		local privs = core.get_player_privs(name)
 		building[name] = {pos = pos, privs = table.copy(privs)}
 		save_pos(player, pos)
-		remove_session(name)
+		aaf_avatar.set_frozen(player, BUILD_FREEZE, true)
+		if session then
+			local vel = session.avatar:get_velocity()
+			if vel then
+				session.avatar:set_velocity(vector.new(0, vel.y, 0))
+			end
+			set_anim(session, session.crouching and "crouch_idle" or "idle")
+			session.rig:set_velocity(vector.zero())
+		end
 		player:set_detach()
 		if cam then
 			player:set_pos(cam)
@@ -236,11 +255,21 @@ function aaf_avatar.set_building(player, on)
 	else
 		local state = building[name]
 		building[name] = nil
+		aaf_avatar.set_frozen(player, BUILD_FREEZE, false)
 		core.set_player_privs(name, state.privs)
 		inv:set_size("hand", 0)
 		player:hud_set_flags(PLAY_HUD)
 		player:set_look_vertical(START_PITCH)
-		start_when_loaded(player, state.pos)
+		local pos = session and session.avatar:get_pos()
+		if pos and session.rig:get_pos() then
+			session.last_pos = pos
+			session.rig:set_pos(rig_target(player, session, pos))
+			session.rig:set_velocity(vector.zero())
+			player:set_attach(session.rig)
+		else
+			remove_session(name)
+			start_when_loaded(player, state.pos)
+		end
 	end
 	for _, fn in ipairs(on_building) do
 		fn(player, on)
@@ -266,24 +295,16 @@ local function clamp_pitch(player)
 	end
 end
 
-local function set_crouching(session, crouching)
-	if crouching == session.crouching then
-		return
-	end
-	session.crouching = crouching
-	local height = HALF_HEIGHT * 2 * (crouching and CROUCH_SCALE or 1)
-	session.avatar:set_properties({visual_size = {x = HALF_WIDTH * 2, y = height, z = HALF_WIDTH * 2}})
-end
-
 local function move_avatar(player, session)
 	local avatar = session.avatar
 	local vel = avatar:get_velocity()
 	if frozen[player:get_player_name()] then
 		avatar:set_velocity(vector.new(0, vel.y, 0))
+		set_anim(session, session.crouching and "crouch_idle" or "idle")
 		return
 	end
 	local ctrl = player:get_player_control()
-	set_crouching(session, ctrl.sneak)
+	session.crouching = ctrl.sneak
 	local speed = session.crouching and CROUCH_SPEED or SPEED
 	local yaw = player:get_look_horizontal()
 	local fwd = (ctrl.up and 1 or 0) - (ctrl.down and 1 or 0)
@@ -293,8 +314,14 @@ local function move_avatar(player, session)
 		-math.sin(yaw) * fwd + math.cos(yaw) * side, 0,
 		math.cos(yaw) * fwd + math.sin(yaw) * side))
 	avatar:set_velocity(vector.new(dir.x * speed, vel.y, dir.z * speed))
-	if dir.x ~= 0 or dir.z ~= 0 then
+	local moving = dir.x ~= 0 or dir.z ~= 0
+	if moving then
 		avatar:set_yaw(math.atan2(-dir.x, dir.z))
+	end
+	if session.crouching then
+		set_anim(session, moving and "crouch_walk" or "crouch_idle")
+	else
+		set_anim(session, moving and "walk" or "idle")
 	end
 end
 
@@ -310,7 +337,7 @@ local function play_footsteps(player, session, from, to)
 		return
 	end
 	session.step_left = session.step_left + STRIDE
-	local def = core.registered_nodes[core.get_node(vector.offset(to, 0, -HALF_HEIGHT - 0.2, 0)).name]
+	local def = core.registered_nodes[core.get_node(vector.offset(to, 0, -0.2, 0)).name]
 	if def and def.walkable then
 		aaf_audio.sfx.play("footstep_" .. (def._aaf_footstep or "wood"),
 			{player = player, gain = session.crouching and CROUCH_STEP_GAIN or 1})
@@ -324,6 +351,10 @@ core.register_globalstep(function(dtime)
 		local rig_pos = session.rig:get_pos()
 		if not player then
 			remove_session(name)
+		elseif building[name] then
+			if pos then
+				session.last_pos = pos
+			end
 		elseif not pos or not rig_pos then
 			-- An entity was lost (e.g. its block unloaded): rebuild both where the avatar was
 			local last = session.last_pos

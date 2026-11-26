@@ -6,7 +6,7 @@ local RECEPTION_LOCKED_LINE = "Locked. The Chief said his keys were under the re
 local KITCHEN_STUCK_LINE = "Stuck. Somebody should fix this door. Somebody won't."
 local KITCHEN_NEED_PICKS_LINE = "Still jammed. I'll need my lockpicking kit from the office safe."
 local MIDCASE_LEAVE_LINES = {"Back to the office. The cab driver didn't ask questions. I liked him for that."}
-local LEAVE_LINES = {"Back to the office. The cab driver remembered me. Neither of us was happy about it."}
+local LEAVE_LINES = {"Back to the office. The cab driver remembered me. He didn't even ask for the address."}
 local ARRIVED = "station:arrived"
 
 -- The detective's own lines
@@ -43,7 +43,7 @@ aaf_interact.register("aaf_station_story:fridge", {
 aaf_interact.register("aaf_station_story:sink", {
 	label = "Look at the sink",
 	on_interact = function(player)
-		say(player, "A dripping tap. It had been talking all night. Nobody listened.")
+		say(player, "A dripping tap. Rehearsing a speech all night. Nobody stayed for the encore.")
 	end,
 })
 

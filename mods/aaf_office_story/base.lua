@@ -16,8 +16,8 @@ local KEYS_HINT = "hold Sneak to crouch and look low"
 -- The key hunt's hint shows after this many wrong spots, or this many seconds
 local HINT_SPOTS = 2
 local HINT_SECONDS = 30
--- Lets the client finish joining before the first card shows
-local INTRO_DELAY = 1
+-- Lets the office load on rejoin before searching for the phone
+local RING_REJOIN_DELAY = 1
 -- The detective walks around the office this long after the intro before the phone rings
 local RING_DELAY = 20
 -- The ring sound's loop length; sparkle bursts at these offsets match its bell
@@ -29,19 +29,19 @@ local RING_LIFE = 0.4
 local PHONE_SEARCH = 16
 
 local INTRO_LINES = {
-	"Another quiet night in this miserable city. The rain came down like it had a grudge.",
-	"Another night waiting for the phone to ring. It always does, eventually.",
+	"Another quiet night in this strange city. The rain came down like it had a grudge.",
+	"I was waiting for the phone to ring. It always does, eventually.",
 }
-local LOCKED_LINE = "Locked. I locked it myself. Of course I did."
+local LOCKED_LINE = "Locked. I locked myself in. Of course I did."
 local LEAVE_LINES = {
-	"The cab smelled of wet dog and broken dreams. "
-		.. "Twenty minutes later I was standing in the police station. Nobody was home.",
+	"The cab smelled of wet dog and stale licorice. "
+		.. "Twenty minutes later I was standing in the police station.\nNobody was home.",
 }
 local RETURN_LINES = {"Back to the station. Same cab. Same wet dog."}
-local LOCKPICKS_LINE = "Three dollars, a photograph of a better man, and my lockpicking kit. "
+local LOCKPICKS_LINE = "Three dollars, a lucky dime I don't trust, and my lockpicking kit. "
 	.. "Never leave home without it. Except tonight."
 local KEYS_NOTE = "Maybe I should check low and look under things?"
-local KEYS_LINE = "Under the desk. Things always end up under the desk. So do I, some nights."
+local KEYS_LINE = "Under the desk. Things always end up under the desk. Gravity has it out for me."
 local CHIEF = "Chief Harrington"
 
 -- The detective's own lines
@@ -221,7 +221,7 @@ local LOOKS = {
 	["aaf_props:board_l#1"] = {label = "Look at the clippings",
 		line = "Clippings from my old cases. Every headline spells my name wrong."},
 	["aaf_props:board_r#1"] = {label = "Look at the clippings",
-		line = "\"Local Detective Finds Dog.\" Front page. It was a slow week. They're all slow weeks."},
+		line = "\"Local Detective Finds Dog.\" Front page. In this town, that's a thriller."},
 }
 for key, look in pairs(LOOKS) do
 	aaf_places.register_thing(PLACE, key, {label = look.label, on_interact = function(player)
@@ -235,18 +235,18 @@ local SPOTS = {
 		label = function(player)
 			return aaf_office_story.can_sleep(player) and "Turn in for the night" or "Search the sofa"
 		end,
-		line = "Between the cushions: a nickel, a button and the last of my dignity. No keys."},
+		line = "Between the cushions: a nickel, a button, and a receipt from 1938.\nNo keys."},
 	wastebasket = {keys = {"aaf_props:wastebasket#1"}, label = "Look in the wastebasket",
-		line = "Old case files. Old regrets. No keys.",
-		after = "Old case files. Old regrets. They'll keep."},
+		line = "Old case files. Three bad theories.\nNo keys.",
+		after = "Old case files. Three bad theories. They'll keep."},
 	safe = {keys = {"aaf_props:safe#1"},
 		label = function(player)
 			return aaf_tasks.has(player, TASK_LOCKPICKS) and "Get lockpicking kit" or "Open the safe"
 		end,
-		line = "My safe. Three dollars and a photograph of a better man. No keys.",
-		after = "Three dollars and a photograph of a better man. Neither one's coming with me."},
+		line = "My safe. Three dollars and a lucky dime I don't trust.\nNo keys.",
+		after = "Three dollars and a lucky dime I don't trust. Neither one's coming with me."},
 	cabinet_milk = {keys = {"aaf_props:cabinet_bottom#1"}, label = "Search the filing cabinet",
-		line = "A bottle of milk. Gone sour, like everything else in this town."},
+		line = "A bottle of milk. Been in there so long it practically pays rent.\nNo keys."},
 	cabinet_bills = {keys = {"aaf_props:cabinet_bottom#2"}, label = "Search the filing cabinet",
 		line = "Unpaid bills. Mostly mine. No keys."},
 	cabinet_cases = {keys = {"aaf_props:cabinet_bottom#3"}, label = "Search the filing cabinet",
@@ -348,16 +348,11 @@ end
 core.register_on_joinplayer(function(player)
 	local name = player:get_player_name()
 	if aaf_places.get(player) == PLACE and not aaf_flags.get(player, INTRO_SEEN) then
-		core.after(INTRO_DELAY, function()
-			local p = core.get_player_by_name(name)
-			if p then
-				start_intro(p)
-			end
-		end)
+		start_intro(player)
 	elseif aaf_places.get(player) == PLACE and not aaf_flags.get(player, CALL_DONE) then
 		-- Timers do not survive a rejoin
 		if aaf_flags.get(player, PHONE_RANG) then
-			core.after(INTRO_DELAY, function()
+			core.after(RING_REJOIN_DELAY, function()
 				local p = core.get_player_by_name(name)
 				if p then
 					start_ringing(p)
