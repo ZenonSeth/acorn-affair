@@ -148,6 +148,7 @@ aaf_notebook.register_item({
 	icon = "aaf_gui_item_key_station.png",
 	has = function(player)
 		return aaf_station_story.knows(player, "register")
+			and not aaf_flags.get(player, "station:returned_chief")
 	end,
 })
 
@@ -158,6 +159,7 @@ aaf_notebook.register_item({
 	icon = "aaf_gui_item_key_miller.png",
 	has = function(player)
 		return aaf_flags.get(player, "station:has_miller_key") ~= nil
+			and not aaf_flags.get(player, "station:returned_miller")
 	end,
 })
 
@@ -168,6 +170,7 @@ aaf_notebook.register_item({
 	icon = "aaf_gui_item_key_jenkins.png",
 	has = function(player)
 		return aaf_flags.get(player, "station:has_jenkins_key") ~= nil
+			and not aaf_flags.get(player, "station:returned_jenkins")
 	end,
 })
 
@@ -178,12 +181,16 @@ aaf_notebook.register_item({
 	icon = "aaf_gui_item_key_chief.png",
 	has = function(player)
 		return aaf_flags.get(player, "station:has_chief_key") ~= nil
+			and not aaf_flags.get(player, "station:returned_chief")
 	end,
 })
 
 aaf_notebook.set_hint_source(function(player)
 	if not arrived(player) then
 		return nil
+	end
+	if aaf_station_story.is_epilogue(player) then
+		return "Case closed. Drop by the station to return any borrowed keys and check in on the precinct."
 	end
 	for _, hint in ipairs(graph.hints) do
 		if holds(player, hint.when) then

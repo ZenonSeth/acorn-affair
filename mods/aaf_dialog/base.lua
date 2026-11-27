@@ -12,11 +12,12 @@ local OPTION_GAP = 0.12
 -- player name -> {kind = "narrate", lines, index, on_done} or {kind = "talk", def}
 local open = {}
 
-local function narrate_form(text)
+local function narrate_form(text, no_close)
 	return table.concat({
 		"formspec_version[6]",
 		"size[16,9]",
 		"bgcolor[#000000;true;#000000]",
+		no_close and "allow_close[false]" or "",
 		"hypertext[1.5,2;13,4.5;text;<global halign=center valign=middle size=22 color=", theme.text, ">",
 		"<i>", escape(text), "</i>]",
 		"button[6,7.2;4,0.8;next;Continue]",
@@ -59,7 +60,7 @@ local function show(player, state)
 	open[name] = state
 	aaf_avatar.set_frozen(player, FREEZE, true)
 	if state.kind == "narrate" then
-		core.show_formspec(name, FORM, narrate_form(state.lines[state.index]))
+		core.show_formspec(name, FORM, narrate_form(state.lines[state.index], state.no_close))
 	else
 		core.show_formspec(name, FORM, talk_form(state.def))
 	end
@@ -92,10 +93,10 @@ function aaf_dialog.is_open(player)
 	return open[player:get_player_name()] ~= nil
 end
 
--- Full-screen black cards, one line each; on_done(player) runs after the last, or when Escape skips the rest
-function aaf_dialog.narrate(player, lines, on_done)
+-- Full-screen black cards, one line each; on_done(player) runs after the last, or when Escape skips (unless no_close)
+function aaf_dialog.narrate(player, lines, on_done, no_close)
 	assert(type(lines) == "table" and #lines > 0, "aaf_dialog: narrate needs lines")
-	show(player, {kind = "narrate", lines = lines, index = 1, on_done = on_done})
+	show(player, {kind = "narrate", lines = lines, index = 1, on_done = on_done, no_close = no_close})
 end
 
 -- def = {speaker, portrait (aaf_gui portrait id), text, options = {{text, on_choose = function(player)}}};
@@ -118,7 +119,7 @@ core.register_on_player_receive_fields(function(player, formname, fields)
 		if fields.next and state.index < #state.lines then
 			state.index = state.index + 1
 			show(player, state)
-		elseif fields.next or fields.quit then
+		elseif fields.next or (fields.quit and not state.no_close) then
 			finish(player, state.on_done)
 		end
 		return true

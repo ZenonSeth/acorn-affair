@@ -1,6 +1,7 @@
 local STATION_REPORTED = "station:reported"
 local ENDING_SEEN = "office:ending_seen"
 local TASK_SLEEP = "office:sleep"
+local TASK_EPILOGUE = "office:epilogue"
 local FREEZE = "aaf_office_ending"
 local NEWS_FORM = "aaf_office_story:newspaper"
 
@@ -36,6 +37,8 @@ local function cleanup(player, mark_seen)
 	active[name] = nil
 	if mark_seen then
 		aaf_flags.set(player, ENDING_SEEN, true)
+		aaf_tasks.add(player, TASK_EPILOGUE, "Return to the police station")
+		aaf_notebook.refresh(player)
 	end
 	aaf_places.play_music(player)
 	aaf_avatar.set_frozen(player, FREEZE, false)
@@ -155,7 +158,7 @@ core.register_globalstep(function(dtime)
 				aaf_audio.music.play(player, "ending")
 				aaf_dialog.narrate(player, {"The next evening..."}, function(p)
 					show_newspaper(p)
-				end)
+				end, true)
 			end
 		end
 	end
@@ -165,7 +168,7 @@ core.register_on_player_receive_fields(function(player, formname, fields)
 	if formname ~= NEWS_FORM then
 		return
 	end
-	if fields.done or fields.quit then
+	if fields.done then
 		cleanup(player, true)
 	end
 	return true

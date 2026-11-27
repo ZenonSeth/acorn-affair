@@ -170,6 +170,13 @@ end
 -- place -> {thing key -> {label, on_interact, can_interact}}; the key is the node's thing id ("aaf_props:safe#30"),
 -- or the bare node name for an untagged thing (matching every untagged copy in that place)
 local things = {}
+-- place -> function(player, target) -> boolean; disables all registered things in that place when false
+local thing_filters = {}
+
+function aaf_places.set_things_enabled(place, fn)
+	assert(places[place], "aaf_places: unknown place " .. tostring(place))
+	thing_filters[place] = fn
+end
 
 function aaf_places.register_thing(place, key, def)
 	assert(places[place], "aaf_places: unknown place " .. tostring(place))
@@ -196,6 +203,10 @@ aaf_interact.register("aaf_places:thing", {
 		return type(label) == "function" and label(player, target) or label
 	end,
 	can_interact = function(player, target)
+		local filter = thing_filters[aaf_places.get(player)]
+		if filter and not filter(player, target) then
+			return false
+		end
 		local thing = thing_of(player, target)
 		return thing ~= nil and (not thing.can_interact or thing.can_interact(player, target))
 	end,

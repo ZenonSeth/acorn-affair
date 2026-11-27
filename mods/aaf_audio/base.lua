@@ -8,7 +8,7 @@ local function clamp01(v)
 end
 
 local function default_player_volume(category)
-	return category == "music" and 0.4 or 1
+	return category == "music" and 0.55 or 1
 end
 
 -- Global setting, overridable per player through meta; categories are "music" and "sfx"

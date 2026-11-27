@@ -9,9 +9,11 @@ local KEYS_HINTED = "office:keys_hinted"
 local TASK_ANSWER = "office:answer"
 local TASK_KEYS = "office:keys"
 local TASK_LEAVE = "office:leave"
+local TASK_EPILOGUE = "office:epilogue"
 local TASK_LOCKPICKS = "station:lockpicks"
 local HAS_LOCKPICKS = "station:has_lockpicks"
 local STATION_ARRIVED = "station:arrived"
+local ENDING_SEEN = "office:ending_seen"
 local KEYS_HINT = "hold Sneak to crouch and look low"
 -- The key hunt's hint shows after this many wrong spots, or this many seconds
 local HINT_SPOTS = 2
@@ -38,6 +40,7 @@ local LEAVE_LINES = {
 		.. "Twenty minutes later I was standing in the police station.\nNobody was home.",
 }
 local RETURN_LINES = {"Back to the station. Same cab. Same wet dog."}
+local EPILOGUE_LINES = {"The next evening. The station's lights were on, and for once, somebody was home."}
 local SAFE_PICKS_TEXT = "My safe. Three dollars, a lucky dime I don't trust, and my lockpicking kit."
 local LOCKPICKS_LINE = "Never leave home without it."
 local DETECTIVE = "Jack Graves"
@@ -395,9 +398,14 @@ aaf_interact.register("aaf_office_story:door", {
 			say(player, LOCKED_LINE)
 			return
 		end
-		local lines = aaf_flags.get(player, STATION_ARRIVED) and RETURN_LINES or LEAVE_LINES
+		local epilogue = aaf_flags.get(player, ENDING_SEEN) ~= nil
+		local lines = epilogue and EPILOGUE_LINES
+			or (aaf_flags.get(player, STATION_ARRIVED) and RETURN_LINES or LEAVE_LINES)
 		if aaf_places.travel(player, "station", lines) then
 			aaf_tasks.complete(player, TASK_LEAVE)
+			if epilogue then
+				aaf_tasks.complete(player, TASK_EPILOGUE)
+			end
 		end
 	end,
 })
