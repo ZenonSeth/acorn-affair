@@ -9,7 +9,7 @@ local YAW_STEP = 0.03
 -- Offsets are in node coordinates at param2 0; beams start at `base` and reach `height` up (dir 1) or down (-1)
 local LIGHTS = {
 	wall = {
-		halo = {offset = vector.new(0, 0.36, 0.125), size = 1.2},
+		halo = {offset = vector.new(0, 0.36, 0.3125), size = 1.2},
 		beams = {
 			-- The sconce faces -Z at param2 0; nudge the glow just in front of it.
 			-- `origin` is where the mesh's origin goes (the OBJ is offset to match): straight behind the halo, so it always draws first
@@ -20,7 +20,7 @@ local LIGHTS = {
 		halo = {offset = vector.new(0, 0.22, 0), size = 1.4},
 		beams = {
 			{base = vector.new(0, 0.41, 0), dir = 1, width = 0.8, height = 0.8, face_pos = true},
-			{base = vector.new(0, 0.06, 0), dir = -1, width = 1.3, height = 1.56},
+			{base = vector.new(0, 0.06, 0), dir = -1, width = 1.3, height = 1.56, face_pos = true},
 		},
 	},
 	desk = {halo = {offset = vector.new(0, -0.1, 0.28), size = 0.9}},

@@ -399,11 +399,11 @@ return {
 	},
 	wall_lamp = {
 		boxes = {
-			{-5/32, 10/32, -1/32, 5/32, 14/32, 9/32},
-			{-4/32, 6/32, 0, 4/32, 10/32, 8/32},
-			{-3/32, 4/32, 1/32, 3/32, 6/32, 7/32},
-			{-1/32, -1/32, 3/32, 1/32, 4/32, 5/32},
-			{-1/32, -3/32, 3/32, 1/32, -1/32, 14/32},
+			{-5/32, 10/32, 5/32, 5/32, 14/32, 15/32},
+			{-4/32, 6/32, 6/32, 4/32, 10/32, 14/32},
+			{-3/32, 4/32, 7/32, 3/32, 6/32, 13/32},
+			{-1/32, -1/32, 9/32, 1/32, 4/32, 11/32},
+			{-1/32, -3/32, 9/32, 1/32, -1/32, 14/32},
 			{-3/32, -7/32, 14/32, 3/32, 5/32, 16/32},
 		},
 		tiles = {"aaf_props_wall_lamp_top.png", "aaf_props_wall_lamp_bottom.png", "aaf_props_wall_lamp_left.png", "aaf_props_wall_lamp_right.png", "aaf_props_wall_lamp_back.png", "aaf_props_wall_lamp_front.png"},
@@ -801,6 +801,14 @@ return {
 			{-8/32, -2/32, 14/32, 8/32, 8/32, 16/32},
 		},
 		tiles = {"aaf_props_clock_top.png", "aaf_props_clock_bottom.png", "aaf_props_clock_left.png", "aaf_props_clock_right.png", "aaf_props_clock_back.png", "aaf_props_clock_front.png"},
+	},
+	clock_915 = {
+		boxes = {
+			{-6/32, -5/32, 14/32, 6/32, 11/32, 16/32},
+			{-7/32, -4/32, 14/32, 7/32, 10/32, 16/32},
+			{-8/32, -2/32, 14/32, 8/32, 8/32, 16/32},
+		},
+		tiles = {"aaf_props_clock_top.png", "aaf_props_clock_bottom.png", "aaf_props_clock_left.png", "aaf_props_clock_right.png", "aaf_props_clock_back.png", "aaf_props_clock_915_front.png"},
 	},
 	kitchen_table_l = {
 		boxes = {

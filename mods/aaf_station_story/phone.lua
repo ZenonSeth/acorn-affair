@@ -106,7 +106,20 @@ local function jack_says(player, text, on_done, label)
 	})
 end
 
+local function has_pending_accusation(player)
+	for _, suspect in ipairs(graph.suspects) do
+		if suspect.accuse and aaf_station_story.is_accused(player, suspect.id)
+				and not aaf_station_story.is_cleared(player, suspect.id) then
+			return true
+		end
+	end
+	return false
+end
+
 local function accusable_suspects(player)
+	if has_pending_accusation(player) then
+		return {}
+	end
 	local list = {}
 	for _, suspect in ipairs(graph.suspects) do
 		if suspect.accuse and aaf_station_story.is_listed(player, suspect.id)

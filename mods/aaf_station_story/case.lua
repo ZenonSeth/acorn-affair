@@ -399,7 +399,7 @@ local THINGS = {
 			say(player, "Wrappers and a racing form. Jenkins lost.")
 		end
 	end},
-	["aaf_props:desk_l#13"] = {label = "Search the empty desk", line = "Nobody's desk. Miller's memos pile up on it like snow."},
+	["aaf_props:desk_l#13"] = {label = "Search the empty desk", line = "Nobody's desk, suspicously empty drawers?"},
 	["aaf_props:paper_scrap#17"] = {label = "Look at the paper", line = "Last week's duty roster, gone soft from the "
 		.. "radiator. Fred's name is on every night shift. Nobody's crossed it out."},
 	-- Chief's office
@@ -420,7 +420,7 @@ local THINGS = {
 			say(player, "Ten years of service. The Chief framed it himself.")
 		end
 	end},
-	["aaf_props:photo_acorn#30"] = {label = "Look at the photo", line = "The Chief and the ACORN. He's smiling. The ACORN isn't."},
+	["aaf_props:photo_acorn#30"] = {label = "Look at the photo", fact = "photo_acorn"},
 	["aaf_props:window_sill_prints#30"] = {label = "Look at the window", fact = "sill_prints",
 		before = "Open a crack. Rain on the sill, the elm right outside. Nice view, if you like trees.",
 		later = {when = "window", line = "The elm. Close enough to jump, for something small."}},

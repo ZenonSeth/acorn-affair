@@ -1,5 +1,13 @@
 local constants = aaf_utils.constants
 
+-- Remove or comment out this block to allow multiplayer
+core.register_on_prejoinplayer(function()
+	if not core.is_singleplayer() then
+		return "The Acorn Affair is singleplayer only.\n"
+			.. "To try it anyway, comment out the singleplayer check in mods/aaf_avatar/base.lua."
+	end
+end)
+
 -- Nodes per second
 local SPEED = 4
 local CROUCH_SPEED = 2

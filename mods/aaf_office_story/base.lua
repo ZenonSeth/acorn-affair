@@ -41,7 +41,7 @@ local LEAVE_LINES = {
 }
 local RETURN_LINES = {"Back to the station. Same cab. Same wet dog."}
 local EPILOGUE_LINES = {"The next evening. The station's lights were on, and for once, somebody was home."}
-local SAFE_PICKS_TEXT = "My safe. Three dollars, a lucky dime I don't trust, and my lockpicking kit."
+local SAFE_PICKS_TEXT = "My safe. Three dollars, my lockpicking kit, and a lucky dime I don't trust."
 local LOCKPICKS_LINE = "Never leave home without it."
 local DETECTIVE = "Jack Graves"
 local KEYS_NOTE = "Maybe I should check low and look under things?"
@@ -228,16 +228,18 @@ local CALL = {
 
 local function call_step(player, i)
 	local step = CALL[i]
+	local info = core.get_player_window_information(player:get_player_name())
+	local prefix = (info and info.touch_controls) and "" or "[Space bar] "
 	aaf_dialog.talk(player, {
 		speaker = CHIEF,
 		portrait = "chief",
 		text = step.chief,
-		options = {{text = step.choice, on_choose = function(p)
+		options = {{text = prefix .. step.choice, on_choose = function(p)
 			aaf_dialog.talk(p, {
 				speaker = DETECTIVE,
 				portrait = "detective",
 				text = step.jack,
-				options = {{text = i < #CALL and "Continue" or "Hang up.", on_choose = function(p2)
+				options = {{text = prefix .. (i < #CALL and "Continue" or "Hang up."), on_choose = function(p2)
 					if i < #CALL then
 						call_step(p2, i + 1)
 					else
@@ -414,7 +416,7 @@ local function start_intro(player)
 	aaf_dialog.narrate(player, INTRO_LINES, function(p)
 		aaf_flags.set(p, INTRO_SEEN, true)
 		start_ring_timer(p)
-	end)
+	end, false, true)
 end
 
 core.register_on_joinplayer(function(player)

@@ -7,6 +7,7 @@ local NEWS_FORM = "aaf_office_story:newspaper"
 
 local FADE_SECONDS = 0.8
 local HOLD_SECONDS = 1.0
+local CLOCK_SEARCH = vector.new(20, 6, 20)
 
 local REFLECTION = {
 	{
@@ -28,6 +29,13 @@ local function black_tex(alpha)
 	return "[fill:8x8:#000000^[opacity:" .. alpha
 end
 
+local function swap_office_clocks(player)
+	local centre = vector.round(aaf_avatar.get_pos(player) or player:get_pos())
+	for _, pos in ipairs(core.find_nodes_in_area(centre - CLOCK_SEARCH, centre + CLOCK_SEARCH, "aaf_props:clock")) do
+		core.swap_node(pos, {name = "aaf_props:clock_915", param2 = core.get_node(pos).param2})
+	end
+end
+
 local function cleanup(player, mark_seen)
 	local name = player:get_player_name()
 	local state = active[name]
@@ -37,6 +45,7 @@ local function cleanup(player, mark_seen)
 	active[name] = nil
 	if mark_seen then
 		aaf_flags.set(player, ENDING_SEEN, true)
+		swap_office_clocks(player)
 		aaf_tasks.add(player, TASK_EPILOGUE, "Return to the police station")
 		aaf_notebook.refresh(player)
 	end

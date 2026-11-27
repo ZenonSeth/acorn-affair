@@ -1,6 +1,8 @@
 -- Post-ending station NPCs seated on their tagged chairs, with two-step epilogue conversations
 local PLACE = "station"
 local CHAIR_NODE = "aaf_props:chair"
+local CHAIR_OCCUPIED = "aaf_props:chair_occupied"
+local CHAIR_NODES = {CHAIR_NODE, CHAIR_OCCUPIED}
 local DETECTIVE = "Jack Graves"
 local TALKED_PREFIX = "station:epilogue_talked_"
 local EPILOGUE_STARTED = "station:epilogue_started"
@@ -41,7 +43,6 @@ local NPCS = {
 	chief = {
 		name = "Chief Arthur Harrington",
 		speaker = "Chief Harrington",
-		pose = {leg = -82, arm_l = -62, arm_r = -58, head = {-4, -10, 0}},
 		first = function(player)
 			local has_drawer = aaf_flags.get(player, "station:has_chief_key") ~= nil
 			return {
@@ -67,7 +68,6 @@ local NPCS = {
 	miller = {
 		name = "Sgt. Edna Miller",
 		speaker = "Sgt. Miller",
-		pose = {leg = -82, arm_l = -42, arm_r = -66, head = {4, 12, 2}},
 		first = function(player)
 			local has_key = aaf_flags.get(player, "station:has_miller_key") ~= nil
 			return {
@@ -94,7 +94,6 @@ local NPCS = {
 	jenkins = {
 		name = "Det. Walter Jenkins",
 		speaker = "Det. Jenkins",
-		pose = {leg = -80, arm_l = -58, arm_r = -28, head = {7, -8, -3}},
 		first = function(player)
 			local has_key = aaf_flags.get(player, "station:has_jenkins_key") ~= nil
 			return {
@@ -121,11 +120,10 @@ local NPCS = {
 	thompson = {
 		name = "Det. Ray Thompson",
 		speaker = "Det. Thompson",
-		pose = {leg = -82, arm_l = -54, arm_r = -60, head = {2, 10, 0}},
 		first = function(player)
 			local picked = aaf_station_story.knows(player, "thompson_log")
 			return {
-				open = "Detective. Didn't expect to see you back here in daylight.",
+				open = "Detective. Didn't expect to see you back here again.",
 				choice1 = picked and "About your lock..." or "About your sandwiches...",
 				jack1 = picked
 					and "Look, Thompson, I owe you an apology. I had to pick your desk lock last night. Chief's orders."
@@ -145,7 +143,6 @@ local NPCS = {
 	fred = {
 		name = "Fred Pickett",
 		speaker = "Fred Pickett",
-		pose = {leg = -78, arm_l = -32, arm_r = -38, head = {-5, -12, 3}},
 		first = function()
 			return {
 				open = "Oh, hey Detective! Thanks for getting that kitchen door unstuck last night.",
@@ -206,17 +203,6 @@ local function talk_to(player, id)
 	})
 end
 
-local function pose_seated(obj, pose)
-	-- absolute = true because no animation plays on the seated NPC
-	obj:set_bone_override("leg_l", {rotation = {vec = {x = math.rad(pose.leg), y = 0, z = 0}, absolute = true}})
-	obj:set_bone_override("leg_r", {rotation = {vec = {x = math.rad(pose.leg), y = 0, z = 0}, absolute = true}})
-	obj:set_bone_override("arm_l", {rotation = {vec = {x = math.rad(pose.arm_l), y = 0, z = 0}, absolute = true}})
-	obj:set_bone_override("arm_r", {rotation = {vec = {x = math.rad(pose.arm_r), y = 0, z = 0}, absolute = true}})
-	local h = pose.head
-	obj:set_bone_override("head", {rotation = {vec = {x = math.rad(h[1]), y = math.rad(h[2]), z = math.rad(h[3])},
-		absolute = true}})
-end
-
 for id, npc in pairs(NPCS) do
 	core.register_entity("aaf_station_story:npc_" .. id, {
 		initial_properties = {
@@ -245,7 +231,7 @@ for id, npc in pairs(NPCS) do
 		},
 		on_activate = function(self)
 			self.object:set_armor_groups({immortal = 1})
-			pose_seated(self.object, npc.pose)
+			self.object:play_animation("sitting", {speed = 1, blend = 0, loop = true})
 		end,
 	})
 end
@@ -281,6 +267,18 @@ local function epilogue_task_text(player, id)
 	return "Check in on Fred Pickett"
 end
 
+local EPILOGUE_REMOVE = {"aaf_props:peanut_shells", "aaf_props:paper_scrap"}
+
+local function update_epilogue_nodes(centre)
+	local minp, maxp = centre - SCAN_RADIUS, centre + SCAN_RADIUS
+	for _, pos in ipairs(core.find_nodes_in_area(minp, maxp, "aaf_props:clock")) do
+		core.swap_node(pos, {name = "aaf_props:clock_915", param2 = core.get_node(pos).param2})
+	end
+	for _, pos in ipairs(core.find_nodes_in_area(minp, maxp, EPILOGUE_REMOVE)) do
+		core.remove_node(pos)
+	end
+end
+
 local function start_epilogue_tasks(player)
 	if not aaf_station_story.is_epilogue(player) or aaf_flags.get(player, EPILOGUE_STARTED) then
 		return
@@ -293,7 +291,13 @@ local function start_epilogue_tasks(player)
 	end
 end
 
-aaf_places.register_on_arrive(PLACE, start_epilogue_tasks)
+aaf_places.register_on_arrive(PLACE, function(player)
+	if not aaf_station_story.is_epilogue(player) then
+		return
+	end
+	start_epilogue_tasks(player)
+	update_epilogue_nodes(vector.round(player:get_pos()))
+end)
 
 local timer = 0
 core.register_globalstep(function(dtime)
@@ -306,10 +310,14 @@ core.register_globalstep(function(dtime)
 		if aaf_places.get(player) == PLACE and aaf_station_story.is_epilogue(player) then
 			start_epilogue_tasks(player)
 			local centre = vector.round(player:get_pos())
-			for _, pos in ipairs(core.find_nodes_in_area(centre - SCAN_RADIUS, centre + SCAN_RADIUS, CHAIR_NODE)) do
+			update_epilogue_nodes(centre)
+			for _, pos in ipairs(core.find_nodes_in_area(centre - SCAN_RADIUS, centre + SCAN_RADIUS, CHAIR_NODES)) do
 				local node = core.get_node(pos)
 				local id = CHAIR_NPCS[math.floor(node.param2 / 4)]
 				if id then
+					if node.name ~= CHAIR_OCCUPIED then
+						core.swap_node(pos, {name = CHAIR_OCCUPIED, param2 = node.param2})
+					end
 					spawn_at_chair(pos, id, node.param2 % 4)
 				end
 			end

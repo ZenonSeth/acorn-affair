@@ -23,7 +23,7 @@ graph.facts = {
 	thompson_note = {title = "Thompson's note", where = "Thompson's desk",
 		line = "He never ate Jenkins' peanuts. Somebody has been biting his lunch."},
 	fred_report = {title = "Fred's unfinished report", where = "Fred's desk", key = true,
-		line = "Something small in the Chief's office at 22:40. Nobody came out of that door all night. "
+		line = "Movement in the Chief's office at 22:40. Nobody came out of that door all night. "
 			.. "A draft moved the papers by it at 23:10."},
 	fred_list = {title = "Fred's reminder list", where = "Fred's desk",
 		line = "Milk. Miller's pen. SIGN THE REGISTER. Two for five."},
@@ -35,6 +35,8 @@ graph.facts = {
 		line = "An empty stand. A gold-plated hole in the Chief's life."},
 	certificate = {title = "ACORN certificate", where = "by the display case", key = true,
 		line = "A solid gold-plated acorn. Unauthorized handling strictly prohibited."},
+	photo_acorn = {title = "Photo of the Chief", where = "the Chief's office", key = true,
+		line = "The Chief and the ACORN. He's smiling. The ACORN isn't."},
 	letter = {title = "Letter to his mother", where = "the Chief's desk", key = true,
 		line = "The ACORN catches the light from the window. He looks at it every morning. And every evening."},
 	sill_prints = {title = "Paw prints on the sill", where = "the Chief's open window", key = true, gate = "small",
@@ -71,7 +73,7 @@ graph.deductions = {
 	{id = "window", title = "In through the window", req = "sill_prints"},
 	{id = "under_door", title = "Under the door", req = "scratches"},
 	{id = "why_acorn", title = "Why the ACORN",
-		req = {all = {"window", "display_case", {any = {"certificate", "letter"}}}}},
+		req = {all = {"window", "display_case", {any = {"certificate", "letter", "photo_acorn"}}}}},
 	{id = "solved", req = {all = {"small", "window", "under_door", "why_acorn"}}},
 }
 

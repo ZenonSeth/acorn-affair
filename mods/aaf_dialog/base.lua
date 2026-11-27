@@ -12,7 +12,8 @@ local OPTION_GAP = 0.12
 -- player name -> {kind = "narrate", lines, index, on_done} or {kind = "talk", def}
 local open = {}
 
-local function narrate_form(text, no_close)
+local function narrate_form(text, no_close, label)
+	local w = label and 6 or 4
 	return table.concat({
 		"formspec_version[6]",
 		"size[16,9]",
@@ -20,7 +21,7 @@ local function narrate_form(text, no_close)
 		no_close and "allow_close[false]" or "",
 		"hypertext[1.5,2;13,4.5;text;<global halign=center valign=middle size=22 color=", theme.text, ">",
 		"<i>", escape(text), "</i>]",
-		"button[6,7.2;4,0.8;next;Continue]",
+		("button[%g,7.2;%g,0.8;next;%s]"):format((16 - w) / 2, w, core.formspec_escape(label or "Continue")),
 	})
 end
 
@@ -60,7 +61,14 @@ local function show(player, state)
 	open[name] = state
 	aaf_avatar.set_frozen(player, FREEZE, true)
 	if state.kind == "narrate" then
-		core.show_formspec(name, FORM, narrate_form(state.lines[state.index], state.no_close))
+		local label
+		if state.space_hint then
+			local info = core.get_player_window_information(name)
+			if not (info and info.touch_controls) then
+				label = "[Space bar] Continue"
+			end
+		end
+		core.show_formspec(name, FORM, narrate_form(state.lines[state.index], state.no_close, label))
 	else
 		core.show_formspec(name, FORM, talk_form(state.def))
 	end
@@ -94,9 +102,9 @@ function aaf_dialog.is_open(player)
 end
 
 -- Full-screen black cards, one line each; on_done(player) runs after the last, or when Escape skips (unless no_close)
-function aaf_dialog.narrate(player, lines, on_done, no_close)
+function aaf_dialog.narrate(player, lines, on_done, no_close, space_hint)
 	assert(type(lines) == "table" and #lines > 0, "aaf_dialog: narrate needs lines")
-	show(player, {kind = "narrate", lines = lines, index = 1, on_done = on_done, no_close = no_close})
+	show(player, {kind = "narrate", lines = lines, index = 1, on_done = on_done, no_close = no_close, space_hint = space_hint})
 end
 
 -- def = {speaker, portrait (aaf_gui portrait id), text, options = {{text, on_choose = function(player)}}};
