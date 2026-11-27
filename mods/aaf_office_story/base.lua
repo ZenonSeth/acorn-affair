@@ -201,7 +201,13 @@ local function hang_up(player)
 	start_hint_timer(player)
 	aaf_places.play_music(player)
 	aaf_notebook.refresh(player)
-	aaf_audio.sfx.play("scribble", {player = player})
+	local pname = player:get_player_name()
+	core.after(0.4, function()
+		local p = core.get_player_by_name(pname)
+		if p then
+			aaf_audio.sfx.play("scribble", {player = p})
+		end
+	end)
 	aaf_notebook.notify(player, {"Note added: Find my keys"})
 end
 

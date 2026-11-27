@@ -33,7 +33,7 @@ function aaf_environment.apply(player)
 		},
 		clouds = false,
 		base_color = "#06080e",
-		fog = {fog_color = "#06080e"},
+		fog = {fog_color = "#06080e", fog_distance = 40, fog_start = 0.4},
 	})
 	player:set_sun({visible = false, sunrise_visible = false})
 	player:set_moon({visible = true})

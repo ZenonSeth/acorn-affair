@@ -18,6 +18,8 @@ local HAS_CHIEF_KEY = "station:has_chief_key"
 local SOLVED_TASK_TEXT = "Tell the Chief what really happened"
 -- JSON list of fact ids in the order the player found them
 local FOUND_KEY = "station:found"
+-- Delay before scribble when an interaction sound plays first
+local SOUND_DELAY = {drawer_open = 0.4, keys_jingle = 0.65}
 
 local deduction_of, suspect_of = {}, {}
 for _, deduction in ipairs(graph.deductions) do
@@ -197,7 +199,7 @@ local function update(player)
 end
 
 -- Records a fact and whatever follows from it
-function aaf_station_story.learn(player, id)
+function aaf_station_story.learn(player, id, scribble_delay)
 	assert(facts[id], "aaf_station_story: unknown fact " .. tostring(id))
 	if aaf_station_story.knows(player, id) then
 		return
@@ -209,7 +211,7 @@ function aaf_station_story.learn(player, id)
 		found[#found + 1] = id
 		aaf_utils.set_json(meta, FOUND_KEY, found)
 		update(player)
-	end)
+	end, scribble_delay)
 	if facts[id].alibi then
 		aaf_tasks.complete(player, TASK_ALIBI_PREFIX .. facts[id].alibi)
 	end
@@ -282,7 +284,7 @@ local function snapshot(player)
 end
 
 -- Runs change(), then rebuilds the notebook and announces what it gained
-function notebook_changed(player, change)
+function notebook_changed(player, change, scribble_delay)
 	local before = {}
 	for _, entry in ipairs(snapshot(player)) do
 		before[entry.key] = true
@@ -298,7 +300,17 @@ function notebook_changed(player, change)
 	end
 	aaf_notebook.refresh(player)
 	if #lines > 0 then
-		aaf_audio.sfx.play("scribble", {player = player})
+		if scribble_delay then
+			local pname = player:get_player_name()
+			core.after(scribble_delay, function()
+				local p = core.get_player_by_name(pname)
+				if p then
+					aaf_audio.sfx.play("scribble", {player = p})
+				end
+			end)
+		else
+			aaf_audio.sfx.play("scribble", {player = player})
+		end
 	end
 	aaf_notebook.notify(player, lines)
 end
@@ -504,14 +516,11 @@ local function use(player, thing)
 	end
 	-- One thought at a time, so the alibi's verdict joins the line
 	say(player, extra and line .. " " .. extra or line)
-	if not known and thing.sound then
-		aaf_audio.sfx.play(thing.sound, {player = player})
-	elseif thing.drawer then
-		aaf_audio.sfx.play("drawer_open", {player = player})
-	elseif thing.doc then
-		aaf_audio.sfx.play("paper_rustle", {player = player})
+	local sound = (not known and thing.sound) or (thing.drawer and "drawer_open") or nil
+	if sound then
+		aaf_audio.sfx.play(sound, {player = player})
 	end
-	aaf_station_story.learn(player, id)
+	aaf_station_story.learn(player, id, sound and SOUND_DELAY[sound])
 	if thing.task then
 		aaf_tasks.complete(player, thing.task)
 	end
