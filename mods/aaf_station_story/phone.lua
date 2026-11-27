@@ -32,6 +32,8 @@ local NOTHING_LINES = {
 
 local ACCUSATIONS = {
 	miller = {
+		jack_first = "What about Sgt. Miller? Ran the front desk all night, keeps tabs on everything.",
+		jack_again = "Remind me where you said Miller keeps her spare key?",
 		first = "Too organized. Nobody is that organized without hiding something. Check her drawer at the front desk. "
 			.. "She keeps a spare key hidden in one of the crates in storage.",
 		again = "I told you where to look, detective! Miller's drawer, and her spare key is in the storage crates.",
@@ -39,6 +41,8 @@ local ACCUSATIONS = {
 		task = "Check Miller's drawer",
 	},
 	jenkins = {
+		jack_first = "Det. Jenkins. Smudged sign-out, and half the precinct's got a complaint with his name on it.",
+		jack_again = "Where did you say Jenkins hides his things again?",
 		first = "Smudged sign-out! A man covering his tracks. Check his bottom drawer, he hides everything there. "
 			.. "He's a slob, he's probably dropped his key somewhere around his desk.",
 		again = "I told you where to look, detective! Jenkins' bottom drawer. Check around his desk for the key.",
@@ -46,6 +50,8 @@ local ACCUSATIONS = {
 		task = "Check Jenkins' bottom drawer",
 	},
 	thompson = {
+		jack_first = "Det. Thompson. Last man out of the building last night.",
+		jack_again = "What was that about Thompson's desk drawer again?",
 		first = "He was here latest! Check his desk drawer, he keeps a little book in there. "
 			.. "The lock is absurdly old, you have my permission to pick it open.",
 		again = "I told you where to look, detective! Thompson's desk drawer. Pick the lock if you have to.",
@@ -53,6 +59,8 @@ local ACCUSATIONS = {
 		task = "Check Thompson's drawer",
 	},
 	fred = {
+		jack_first = "Fred Pickett. Never signed in, still managed to be here all evening.",
+		jack_again = "You said Pickett was skulking around the kitchen?",
 		first = "Not even signed in! A phantom! The kitchen, that's where he skulks. The door gets locked "
 			.. "sometimes. Don't break it down, Miller will bury us in paperwork, but if you can unlock it, go for it.",
 		again = "I told you where to look, detective! The kitchen. Just don't break the door down.",
@@ -60,6 +68,8 @@ local ACCUSATIONS = {
 		task = "Get into the kitchen",
 	},
 	chief = {
+		jack_first = "Hate to say it, Chief, but you've got an open window, fresh insurance, and money trouble.",
+		jack_again = "Remind me where that spare key of yours is taped, Chief?",
 		first = "ME? I was giving the toast at the Benevolent Society dinner! Forty-seven minutes! "
 			.. "The program is in my desk drawer. The spare key is taped behind my service certificate. "
 			.. "Read it and apologize.",
@@ -70,13 +80,14 @@ local ACCUSATIONS = {
 }
 
 local REPORT_STEPS = {
-	{speaker = CHIEF, portrait = "chief", text = "Then who? Out with it!", reply = "A squirrel."},
-	{speaker = CHIEF, portrait = "chief", text = "A WHAT?", reply = "Let me explain."},
+	{speaker = CHIEF, portrait = "chief", text = "Then who? Out with it!", reply = "Tell him."},
+	{speaker = DETECTIVE, portrait = "detective", text = "A squirrel.", reply = "Continue"},
+	{speaker = CHIEF, portrait = "chief", text = "A WHAT?", reply = "Explain."},
 	{speaker = DETECTIVE, portrait = "detective",
 		text = "A squirrel. It lives in the elm outside. It's been coming in through your office window all week. "
 			.. "The peanuts, the sandwiches, the drawers. Tonight it found something shiny shaped like an acorn.",
 		reply = "Continue"},
-	{speaker = CHIEF, portrait = "chief", text = "You're telling me a squirrel stole my ACORN.", reply = "Continue"},
+	{speaker = CHIEF, portrait = "chief", text = "You're telling me a squirrel stole my ACORN.", reply = "Pretty much."},
 	{speaker = DETECTIVE, portrait = "detective",
 		text = "I'm telling you it thought your ACORN was an acorn. Can't say I blame it.", reply = "Continue"},
 	{speaker = CHIEF, portrait = "chief", text = "...I want that animal arrested.", reply = "Hang up."},
@@ -84,6 +95,15 @@ local REPORT_STEPS = {
 
 local function hang_up(player)
 	aaf_places.play_music(player)
+end
+
+local function jack_says(player, text, on_done, label)
+	aaf_dialog.talk(player, {
+		speaker = DETECTIVE,
+		portrait = "detective",
+		text = text,
+		options = {{text = label or "Continue", on_choose = on_done}},
+	})
 end
 
 local function accusable_suspects(player)
@@ -140,23 +160,25 @@ end
 local function accuse_suspect(player, suspect)
 	local info = ACCUSATIONS[suspect.id]
 	local already = aaf_station_story.is_accused(player, suspect.id)
-	if not already then
-		aaf_station_story.accuse(player, suspect.id)
-		if (suspect.id == "fred" or suspect.id == "thompson") and not aaf_flags.get(player, HAS_LOCKPICKS) then
-			aaf_tasks.add(player, TASK_LOCKPICKS, "Get your lockpicking kit from the office safe")
-		elseif suspect.id == "miller" and not aaf_flags.get(player, HAS_MILLER_KEY) then
-			aaf_tasks.add(player, TASK_MILLER_KEY, "Find Miller's spare key in storage")
-		elseif suspect.id == "chief" and not aaf_flags.get(player, HAS_CHIEF_KEY) then
-			aaf_tasks.add(player, TASK_CHIEF_KEY, "Get the Chief's key behind his certificate")
+	jack_says(player, already and info.jack_again or info.jack_first, function(p)
+		if not already then
+			aaf_station_story.accuse(p, suspect.id)
+			if (suspect.id == "fred" or suspect.id == "thompson") and not aaf_flags.get(p, HAS_LOCKPICKS) then
+				aaf_tasks.add(p, TASK_LOCKPICKS, "Get your lockpicking kit from the office safe")
+			elseif suspect.id == "miller" and not aaf_flags.get(p, HAS_MILLER_KEY) then
+				aaf_tasks.add(p, TASK_MILLER_KEY, "Find Miller's spare key in storage")
+			elseif suspect.id == "chief" and not aaf_flags.get(p, HAS_CHIEF_KEY) then
+				aaf_tasks.add(p, TASK_CHIEF_KEY, "Get the Chief's key behind his certificate")
+			end
+			aaf_tasks.add(p, TASK_ALIBI_PREFIX .. suspect.id, info.task)
 		end
-		aaf_tasks.add(player, TASK_ALIBI_PREFIX .. suspect.id, info.task)
-	end
-	aaf_dialog.talk(player, {
-		speaker = CHIEF,
-		portrait = "chief",
-		text = already and info.again or info.first,
-		options = {{text = already and "Right. I'm on it." or "I'll take a look.", on_choose = hang_up}},
-	})
+		aaf_dialog.talk(p, {
+			speaker = CHIEF,
+			portrait = "chief",
+			text = already and info.again or info.first,
+			options = {{text = "Hang up.", on_choose = hang_up}},
+		})
+	end)
 end
 
 local show_main
@@ -186,14 +208,16 @@ local function show_accuse_menu(player, opening)
 end
 
 local function say_nothing(player)
-	local count = (aaf_flags.get(player, NOTHING_FLAG) or 0) + 1
-	aaf_flags.set(player, NOTHING_FLAG, count)
-	aaf_dialog.talk(player, {
-		speaker = CHIEF,
-		portrait = "chief",
-		text = NOTHING_LINES[math.min(count, #NOTHING_LINES)],
-		options = {{text = "Back to work.", on_choose = hang_up}},
-	})
+	jack_says(player, "Nothing solid yet, Chief. Still piecing it together.", function(p)
+		local count = (aaf_flags.get(p, NOTHING_FLAG) or 0) + 1
+		aaf_flags.set(p, NOTHING_FLAG, count)
+		aaf_dialog.talk(p, {
+			speaker = CHIEF,
+			portrait = "chief",
+			text = NOTHING_LINES[math.min(count, #NOTHING_LINES)],
+			options = {{text = "Hang up.", on_choose = hang_up}},
+		})
+	end)
 end
 
 function show_main(player, opening)
@@ -208,13 +232,15 @@ function show_main(player, opening)
 	end
 	if aaf_station_story.knows(player, "solved") then
 		options[#options + 1] = {
-			text = "It wasn't one of your officers.",
+			text = "Not an officer.",
 			on_choose = function(p)
-				report_step(p, 1)
+				jack_says(p, "Good news for your pension, Chief. It wasn't one of your officers.", function(p2)
+					report_step(p2, 1)
+				end)
 			end,
 		}
 	end
-	options[#options + 1] = {text = "Nothing yet, Chief.", on_choose = say_nothing}
+	options[#options + 1] = {text = "Nothing yet.", on_choose = say_nothing}
 	aaf_dialog.talk(player, {
 		speaker = CHIEF,
 		portrait = "chief",

@@ -8,8 +8,9 @@ local page = aaf_notebook.PAGE
 
 local ARRIVED = "station:arrived"
 local SUSPECT_PREFIX = "nb_suspect_"
-local BUTTON_W, BUTTON_H, BUTTON_GAP = 5, 0.8, 0.15
-local CLEARED_W = 1.4
+local PORTRAIT_SIZE, PORTRAIT_GAP = 0.95, 0.12
+local BUTTON_W, BUTTON_H, BUTTON_GAP = 4.5, 0.95, 0.15
+local CLEARED_W = 1.3
 local MARGIN = 0.4
 
 -- clue id -> its notes, in graph order
@@ -103,24 +104,26 @@ local function suspects_tab(player)
 	local current = current_suspect(player, list)
 	local fs = {}
 	local x, y = page.x + MARGIN, page.y + MARGIN
+	local bx = x + PORTRAIT_SIZE + PORTRAIT_GAP
 	for _, suspect in ipairs(list) do
 		local name = SUSPECT_PREFIX .. suspect.id
 		local cleared = aaf_station_story.is_cleared(player, suspect.id)
+		fs[#fs + 1] = aaf_gui.portrait(x, y, PORTRAIT_SIZE, suspect.id)
 		if suspect == current then
 			fs[#fs + 1] = ("style[%s;bgimg=aaf_gui_button_pressed.png;textcolor=%s]"):format(name, theme.ink)
 		elseif cleared then
 			fs[#fs + 1] = ("style[%s;textcolor=%s]"):format(name, theme.muted)
 		end
-		fs[#fs + 1] = ("button[%g,%g;%g,%g;%s;%s]"):format(x, y, BUTTON_W, BUTTON_H, name,
+		fs[#fs + 1] = ("button[%g,%g;%g,%g;%s;%s]"):format(bx, y, BUTTON_W, BUTTON_H, name,
 			core.formspec_escape(suspect.name))
 		if cleared then
-			fs[#fs + 1] = page_text("cleared_" .. suspect.id, x + BUTTON_W + 0.1, y, CLEARED_W, BUTTON_H,
+			fs[#fs + 1] = page_text("cleared_" .. suspect.id, bx + BUTTON_W + 0.1, y, CLEARED_W, BUTTON_H,
 				"<global valign=middle>" .. color(theme.accent, "cleared"))
 		end
 		y = y + BUTTON_H + BUTTON_GAP
 	end
 	if current then
-		local dx = x + BUTTON_W + CLEARED_W + 0.3
+		local dx = bx + BUTTON_W + CLEARED_W + 0.25
 		fs[#fs + 1] = page_text("suspect", dx, page.y + MARGIN, page.x + page.w - MARGIN - dx, page.h - 2 * MARGIN,
 			suspect_details(player, current))
 	end

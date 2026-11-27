@@ -153,7 +153,7 @@ core.register_globalstep(function(dtime)
 			if state.t >= HOLD_SECONDS then
 				state.phase = "card"
 				aaf_audio.music.play(player, "ending")
-				aaf_dialog.narrate(player, {"The next morning..."}, function(p)
+				aaf_dialog.narrate(player, {"The next evening..."}, function(p)
 					show_newspaper(p)
 				end)
 			end

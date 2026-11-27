@@ -200,16 +200,27 @@ local function hang_up(player)
 	aaf_notebook.notify(player, {"Note added: Find my keys"})
 end
 
--- The opening call (GDD 7.1): the chief's line and the detective's one reply, three times
+-- The opening call (GDD 7.1): chief's line, short choice, detective's spoken reply
 local CALL = {
-	{text = "Is this Jack Graves? The detective? This is Chief Arthur Harrington. Something has been taken "
-		.. "from my office. Something irreplaceable.", reply = "Your wallet?"},
-	{text = "My ACORN. The Award for Outstanding Constabulary Recognition and Notability. Solid gold-plated. "
-		.. "It was on its stand at half past nine and gone by ten to midnight.", reply = "Anyone else in the building?"},
-	{text = "My own officers. One of them did it, I'd stake my pension on it. The front door's unlocked, and "
-		.. "my keys to the rest of the building are under the register on the front desk. Call me from the front "
-		.. "desk phone when you know who. I won't be sleeping.",
-		reply = "I'll come take a look. Don't rush to accusations."},
+	{
+		chief = "Is this Jack Graves? The detective? This is Chief Arthur Harrington. Something has been taken "
+			.. "from my office. Something irreplaceable.",
+		choice = "Let me guess...",
+		jack = "Let me guess, someone made off with your badge? Or your wallet?",
+	},
+	{
+		chief = "My ACORN. The Award for Outstanding Constabulary Recognition and Notability. Solid gold-plated. "
+			.. "It was on its stand at half past nine and gone by ten to midnight.",
+		choice = "Who was there?",
+		jack = "A solid gold-plated acorn. Right. Anyone else in the building?",
+	},
+	{
+		chief = "My own officers. One of them did it, I'd stake my pension on it. The front door's unlocked, and "
+			.. "my keys to the rest of the building are under the register on the front desk. Call me from the front "
+			.. "desk phone when you know who. I won't be sleeping.",
+		choice = "I'll take the case.",
+		jack = "Hold on to your pension, Chief. I'll come take a look. Just don't rush to accusations.",
+	},
 }
 
 local function call_step(player, i)
@@ -217,13 +228,20 @@ local function call_step(player, i)
 	aaf_dialog.talk(player, {
 		speaker = CHIEF,
 		portrait = "chief",
-		text = step.text,
-		options = {{text = step.reply, on_choose = function(p)
-			if i < #CALL then
-				call_step(p, i + 1)
-			else
-				hang_up(p)
-			end
+		text = step.chief,
+		options = {{text = step.choice, on_choose = function(p)
+			aaf_dialog.talk(p, {
+				speaker = DETECTIVE,
+				portrait = "detective",
+				text = step.jack,
+				options = {{text = i < #CALL and "Continue" or "Hang up.", on_choose = function(p2)
+					if i < #CALL then
+						call_step(p2, i + 1)
+					else
+						hang_up(p2)
+					end
+				end}},
+			})
 		end}},
 	})
 end
