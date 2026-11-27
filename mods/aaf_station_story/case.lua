@@ -297,6 +297,9 @@ function notebook_changed(player, change)
 		end
 	end
 	aaf_notebook.refresh(player)
+	if #lines > 0 then
+		aaf_audio.sfx.play("scribble", {player = player})
+	end
 	aaf_notebook.notify(player, lines)
 end
 
@@ -361,7 +364,7 @@ local THINGS = {
 	["aaf_props:papers_mug#1"] = {label = "Read the papers", fact = "noise_complaint", doc = true},
 	["aaf_props:board_l_plain#2"] = {label = "Read the missing property notice", fact = "missing_notice", doc = true},
 	["aaf_props:board_r_plain#2"] = {label = "Read the window notice", fact = "window_notice", doc = true},
-	["aaf_props:reception_desk#1"] = {label = "Search Miller's drawer", fact = "miller_log", doc = true,
+	["aaf_props:reception_desk#1"] = {label = "Search Miller's drawer", fact = "miller_log", doc = true, drawer = true,
 		key_flag = HAS_MILLER_KEY,
 		locked = "Locked.",
 		locked_accused = "Locked. The Chief said she keeps a spare key in the storage crates.",
@@ -371,11 +374,11 @@ local THINGS = {
 	["aaf_props:board_r_plain#10"] = {label = "Read the memo", fact = "memo", doc = true},
 	["aaf_props:lamp_papers#10"] = {label = "Read the report", fact = "fred_report", doc = true},
 	["aaf_props:papers_mug#10"] = {label = "Read the list", fact = "fred_list", doc = true},
-	["aaf_props:desk_l_papers#10"] = {label = "Search Fred's drawer", line = "Three pens. All of them Miller's."},
+	["aaf_props:desk_l_papers#10"] = {label = "Search Fred's drawer", drawer = true, line = "Three pens. All of them Miller's."},
 	["aaf_props:lamp_sandwich#11"] = {label = "Look at the sandwich", fact = "sandwich",
 		before = "Somebody's lunch. Not mine. Not evidence."},
 	["aaf_props:phone_papers#11"] = {label = "Read the note", fact = "thompson_note", doc = true},
-	["aaf_props:desk_l#11"] = {label = "Search Thompson's drawer", fact = "thompson_log", doc = true,
+	["aaf_props:desk_l#11"] = {label = "Search Thompson's drawer", fact = "thompson_log", doc = true, drawer = true,
 		key_flag = HAS_LOCKPICKS,
 		locked = "Locked. An old lock.",
 		locked_accused = "Locked. An old lock. My lockpicking kit from the office safe would open it.",
@@ -384,7 +387,7 @@ local THINGS = {
 	["aaf_props:lamp_peanuts#12"] = {label = "Look at the peanuts",
 		line = "A jar of peanuts, guarded like the crown jewels."},
 	["aaf_props:phone_papers#12"] = {label = "Read the complaint", fact = "peanut_complaint", doc = true},
-	["aaf_props:desk_l_papers#12"] = {label = "Search the bottom drawer", fact = "ticket_stub", doc = true,
+	["aaf_props:desk_l_papers#12"] = {label = "Search the bottom drawer", fact = "ticket_stub", doc = true, drawer = true,
 		key_flag = HAS_JENKINS_KEY,
 		locked = "Locked.",
 		locked_accused = "Locked. The Chief said Jenkins probably dropped his key somewhere near his desk.",
@@ -399,7 +402,7 @@ local THINGS = {
 			say(player, "Wrappers and a racing form. Jenkins lost.")
 		end
 	end},
-	["aaf_props:desk_l#13"] = {label = "Search the empty desk", line = "Nobody's desk, suspicously empty drawers?"},
+	["aaf_props:desk_l#13"] = {label = "Search the empty desk", drawer = true, line = "Nobody's desk. Suspiciously empty drawers."},
 	["aaf_props:paper_scrap#17"] = {label = "Look at the paper", line = "Last week's duty roster, gone soft from the "
 		.. "radiator. Fred's name is on every night shift. Nobody's crossed it out."},
 	-- Chief's office
@@ -433,7 +436,7 @@ local THINGS = {
 	["aaf_props:safe#30"] = {label = "Try the safe", fact = "safe",
 		picks_line = "This lock is beyond my lockpicking skills. And I wouldn't want to anyway.",
 		later = {when = "dinner_program", line = "Still locked. Still none of my business."}},
-	["aaf_props:desk_l_papers#30"] = {label = "Search the Chief's drawer", fact = "dinner_program", doc = true,
+	["aaf_props:desk_l_papers#30"] = {label = "Search the Chief's drawer", fact = "dinner_program", doc = true, drawer = true,
 		key_flag = HAS_CHIEF_KEY,
 		locked = "The Chief's private drawer. Locked.",
 		locked_accused = "The Chief's private drawer. Locked. He said the key is behind his service certificate.",
@@ -470,6 +473,9 @@ local function use(player, thing)
 		return
 	end
 	if thing.line then
+		if thing.drawer then
+			aaf_audio.sfx.play("drawer_open", {player = player})
+		end
 		say(player, thing.line)
 		return
 	end
@@ -500,6 +506,10 @@ local function use(player, thing)
 	say(player, extra and line .. " " .. extra or line)
 	if not known and thing.sound then
 		aaf_audio.sfx.play(thing.sound, {player = player})
+	elseif thing.drawer then
+		aaf_audio.sfx.play("drawer_open", {player = player})
+	elseif thing.doc then
+		aaf_audio.sfx.play("paper_rustle", {player = player})
 	end
 	aaf_station_story.learn(player, id)
 	if thing.task then

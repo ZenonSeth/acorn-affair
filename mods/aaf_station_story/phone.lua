@@ -94,6 +94,7 @@ local REPORT_STEPS = {
 }
 
 local function hang_up(player)
+	aaf_audio.sfx.play("phone_hangup", {player = player})
 	aaf_places.play_music(player)
 end
 
@@ -265,6 +266,7 @@ end
 aaf_places.register_thing(PLACE, "aaf_props:phone#1", {
 	label = "Call the Chief",
 	on_interact = function(player)
+		aaf_audio.sfx.play("phone_pickup", {player = player})
 		aaf_audio.music.play(player, "call")
 		if aaf_flags.get(player, REPORTED) then
 			aaf_dialog.talk(player, {

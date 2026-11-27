@@ -96,3 +96,17 @@ core.register_on_joinplayer(function(player)
 	add_rain(player)
 	aaf_audio.sfx.start_loop(player, "ambience", "rain")
 end)
+
+local THUNDER_MIN, THUNDER_MAX = 35, 90
+local thunder_timer = math.random(THUNDER_MIN, THUNDER_MAX)
+
+core.register_globalstep(function(dtime)
+	thunder_timer = thunder_timer - dtime
+	if thunder_timer > 0 then
+		return
+	end
+	thunder_timer = math.random(THUNDER_MIN, THUNDER_MAX)
+	for _, player in ipairs(core.get_connected_players()) do
+		aaf_audio.sfx.play("thunder", {player = player})
+	end
+end)

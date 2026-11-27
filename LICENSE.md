@@ -39,6 +39,16 @@ game Strata), not recordings; they are covered by the media license above.
   - Files: `mods/aaf_audio/sounds/aaf_audio_door_open.ogg` (trimmed, converted to mono Ogg Vorbis)
   - License (SPDX): CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)
 
+- **"writing - pen - wide 01.wav"** by Anthousai (freesound.org)
+  - Source: https://freesound.org/s/337087/
+  - Files: `mods/aaf_audio/sounds/aaf_audio_scribble.ogg` (trimmed, converted to mono Ogg Vorbis)
+  - License (SPDX): CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)
+
+- **"phone pickup hangup.flac"** by kyles (freesound.org)
+  - Source: https://freesound.org/s/637750/
+  - Files: `mods/aaf_audio/sounds/aaf_audio_phone_pickup.ogg`, `mods/aaf_audio/sounds/aaf_audio_phone_hangup.ogg` (split, trimmed, converted to mono Ogg Vorbis)
+  - License (SPDX): CC0-1.0 (https://creativecommons.org/publicdomain/zero/1.0/)
+
 - **"I Knew a Guy"** by Kevin MacLeod (incompetech.com)
   - Source: http://incompetech.com
   - Files: `menu/theme.ogg` (a cut excerpt of the original)

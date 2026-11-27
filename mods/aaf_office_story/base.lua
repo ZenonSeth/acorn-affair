@@ -194,12 +194,14 @@ local function start_ring_timer(player)
 end
 
 local function hang_up(player)
+	aaf_audio.sfx.play("phone_hangup", {player = player})
 	aaf_flags.set(player, CALL_DONE, true)
 	aaf_tasks.complete(player, TASK_ANSWER)
 	aaf_tasks.add(player, TASK_KEYS, "Find your keys")
 	start_hint_timer(player)
 	aaf_places.play_music(player)
 	aaf_notebook.refresh(player)
+	aaf_audio.sfx.play("scribble", {player = player})
 	aaf_notebook.notify(player, {"Note added: Find my keys"})
 end
 
@@ -258,6 +260,7 @@ aaf_places.register_thing(PLACE, "aaf_props:phone_mug#1", {
 	end,
 	on_interact = function(player)
 		stop_ringing(player)
+		aaf_audio.sfx.play("phone_pickup", {player = player})
 		aaf_audio.music.play(player, "call")
 		call_step(player, 1)
 	end,
